@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../../lib/supabase'
+import { fetchAll } from '../../lib/db'
 import { calcAlcance, formatWeekRange } from '../../lib/bonos'
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine
@@ -11,13 +12,14 @@ export default function AdminTendencia() {
 
   useEffect(() => {
     async function load() {
-      // Get all orders grouped by week
-      const { data: orders } = await supabase
-        .from('orders')
-        .select('usuario_ffm, semana_inicio, estrellas, meta_estrellas')
-        .order('semana_inicio', { ascending: true })
+      const orders = await fetchAll((from, to) =>
+        supabase.from('orders')
+          .select('usuario_ffm, semana_inicio, estrellas, meta_estrellas')
+          .order('semana_inicio', { ascending: true })
+          .range(from, to)
+      )
 
-      if (!orders) { setLoading(false); return }
+      if (!orders.length) { setLoading(false); return }
 
       // Group by semana_inicio → per tech totals → avg alcance
       const weekMap = {}

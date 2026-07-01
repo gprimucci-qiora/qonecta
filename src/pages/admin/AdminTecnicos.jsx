@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../../lib/supabase'
+import { fetchAll } from '../../lib/db'
 import { calcAlcance, getNivel, getWeekStart } from '../../lib/bonos'
 
 export default function AdminTecnicos() {
@@ -12,13 +13,16 @@ export default function AdminTecnicos() {
 
   useEffect(() => {
     async function load() {
-      const [{ data: profiles }, { data: orders }] = await Promise.all([
-        supabase.from('profiles').select('*').order('nombre'),
-        supabase.from('orders').select('usuario_ffm, estrellas').eq('semana_inicio', weekStart),
+      const [profiles, orders] = await Promise.all([
+        supabase.from('profiles').select('*').order('nombre').then(r => r.data ?? []),
+        fetchAll((from, to) =>
+          supabase.from('orders').select('usuario_ffm, estrellas')
+            .eq('semana_inicio', weekStart).range(from, to)
+        ),
       ])
       const map = {}
-      ;(profiles ?? []).forEach(p => { map[p.usuario_ffm] = { ...p, totalEstrellas: 0 } })
-      ;(orders ?? []).forEach(o => { if (map[o.usuario_ffm]) map[o.usuario_ffm].totalEstrellas += o.estrellas })
+      profiles.forEach(p => { map[p.usuario_ffm] = { ...p, totalEstrellas: 0 } })
+      orders.forEach(o => { if (map[o.usuario_ffm]) map[o.usuario_ffm].totalEstrellas += o.estrellas })
       setTechs(Object.values(map).map(t => ({
         ...t,
         alcancePct: calcAlcance(t.totalEstrellas, t.meta_estrellas),

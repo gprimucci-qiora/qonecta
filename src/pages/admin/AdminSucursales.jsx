@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../../lib/supabase'
+import { fetchAll } from '../../lib/db'
 import { calcAlcance, getNivel, getWeekStart } from '../../lib/bonos'
 
 export default function AdminSucursales() {
@@ -9,14 +10,16 @@ export default function AdminSucursales() {
 
   useEffect(() => {
     async function load() {
-      const [{ data: profiles }, { data: orders }] = await Promise.all([
-        supabase.from('profiles').select('usuario_ffm, sucursal, meta_estrellas'),
-        supabase.from('orders').select('usuario_ffm, estrellas').eq('semana_inicio', weekStart),
+      const [profiles, orders] = await Promise.all([
+        supabase.from('profiles').select('usuario_ffm, sucursal, meta_estrellas').then(r => r.data ?? []),
+        fetchAll((from, to) =>
+          supabase.from('orders').select('usuario_ffm, estrellas')
+            .eq('semana_inicio', weekStart).range(from, to)
+        ),
       ])
-      // Build per-tech map
       const techMap = {}
-      ;(profiles ?? []).forEach(p => { techMap[p.usuario_ffm] = { ...p, totalEstrellas: 0 } })
-      ;(orders ?? []).forEach(o => { if (techMap[o.usuario_ffm]) techMap[o.usuario_ffm].totalEstrellas += o.estrellas })
+      profiles.forEach(p => { techMap[p.usuario_ffm] = { ...p, totalEstrellas: 0 } })
+      orders.forEach(o => { if (techMap[o.usuario_ffm]) techMap[o.usuario_ffm].totalEstrellas += o.estrellas })
 
       // Group by sucursal
       const sucMap = {}

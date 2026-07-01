@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../../lib/supabase'
+import { fetchAll } from '../../lib/db'
 import { formatWeekRange, getWeekStart } from '../../lib/bonos'
 
 const CUADRILLAS = ['NORMAL', 'MOTO', 'HIBRIDA', 'ELITE', 'MULTIDISTRITO']
@@ -364,12 +365,197 @@ function TabAdmin() {
   )
 }
 
+// ── Usuarios activos ───────────────────────────────────────────────────────────
+
+const ADMIN_EMAIL = 'g.primucci@qiora.com.mx'
+
+function TabUsuarios() {
+  const [users, setUsers] = useState([])
+  const [profiles, setProfiles] = useState({})
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
+  const [pending, setPending] = useState(null)   // userId to confirm-delete
+  const [deleting, setDeleting] = useState(null)
+  const [search, setSearch] = useState('')
+
+  const load = useCallback(async () => {
+    setLoading(true)
+    setError(null)
+    const token = await getToken()
+    const res = await fetch('/api/admin-users', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+      body: JSON.stringify({ action: 'list_users' }),
+    })
+    const data = await res.json()
+    if (!data.ok) { setError(data.error); setLoading(false); return }
+
+    // Also load profiles to show FFM + name for técnicos
+    const profs = await fetchAll((from, to) =>
+      supabase.from('profiles').select('id, usuario_ffm, nombre').range(from, to)
+    )
+    const profMap = {}
+    profs.forEach(p => { profMap[p.id] = p })
+
+    setUsers(data.users.sort((a, b) => new Date(b.created_at) - new Date(a.created_at)))
+    setProfiles(profMap)
+    setLoading(false)
+  }, [])
+
+  useEffect(() => { load() }, [load])
+
+  async function deleteUser(userId) {
+    setDeleting(userId)
+    setPending(null)
+    const token = await getToken()
+    const res = await fetch('/api/admin-users', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+      body: JSON.stringify({ action: 'delete_user', userId }),
+    })
+    const data = await res.json()
+    if (data.ok) {
+      setUsers(u => u.filter(x => x.id !== userId))
+    } else {
+      setError(data.error)
+    }
+    setDeleting(null)
+  }
+
+  const filtered = users.filter(u => {
+    if (!search) return true
+    const q = search.toLowerCase()
+    const prof = profiles[u.id]
+    return (
+      u.email?.toLowerCase().includes(q) ||
+      prof?.nombre?.toLowerCase().includes(q) ||
+      prof?.usuario_ffm?.toLowerCase().includes(q)
+    )
+  })
+
+  const typeOf = (u) => {
+    if (u.email === ADMIN_EMAIL) return { label: 'Super admin', color: '#BF5AF2' }
+    if (u.app_metadata?.role === 'admin') return { label: 'Admin', color: '#00B2E3' }
+    return { label: 'Técnico', color: '#30D158' }
+  }
+
+  if (loading) return <p style={{ color: '#8E8E93', padding: '12px 0' }}>Cargando usuarios...</p>
+  if (error) return <Msg msg={{ type: 'err', text: error }} />
+
+  return (
+    <>
+      <div style={{ display: 'flex', gap: 12, marginBottom: 16, alignItems: 'center' }}>
+        <input
+          type="text"
+          placeholder="Buscar por email, nombre o FFM..."
+          value={search}
+          onChange={e => setSearch(e.target.value)}
+          style={{
+            flex: 1, padding: '8px 12px', border: '1px solid #E5E5EA',
+            borderRadius: 8, fontFamily: 'inherit', fontSize: 14, outline: 'none',
+          }}
+        />
+        <span style={{ fontSize: 13, color: '#8E8E93', whiteSpace: 'nowrap' }}>
+          {filtered.length} usuario{filtered.length !== 1 ? 's' : ''}
+        </span>
+      </div>
+
+      <div className="admin-card" style={{ padding: 0, overflow: 'hidden' }}>
+        <table className="admin-table">
+          <thead>
+            <tr>
+              <th>Email / FFM</th>
+              <th>Nombre</th>
+              <th>Tipo</th>
+              <th>Creado</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {filtered.map(u => {
+              const prof = profiles[u.id]
+              const tipo = typeOf(u)
+              const isMainAdmin = u.email === ADMIN_EMAIL
+              const isBusy = deleting !== null
+              return (
+                <tr key={u.id}>
+                  <td style={{ fontFamily: 'monospace', fontSize: 12 }}>
+                    {prof?.usuario_ffm
+                      ? <><span style={{ fontWeight: 700 }}>{prof.usuario_ffm}</span><span style={{ color: '#8E8E93' }}> · {u.email}</span></>
+                      : u.email
+                    }
+                  </td>
+                  <td style={{ color: prof?.nombre ? '#1C1C1E' : '#C7C7CC', fontStyle: prof?.nombre ? 'normal' : 'italic' }}>
+                    {prof?.nombre || '—'}
+                  </td>
+                  <td>
+                    <span style={{
+                      fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 999,
+                      background: tipo.color + '22', color: tipo.color,
+                    }}>
+                      {tipo.label}
+                    </span>
+                  </td>
+                  <td style={{ color: '#8E8E93', fontSize: 12 }}>
+                    {new Date(u.created_at).toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: 'numeric' })}
+                  </td>
+                  <td style={{ width: 140, textAlign: 'right', paddingRight: 16 }}>
+                    {!isMainAdmin && (
+                      pending === u.id ? (
+                        <span style={{ display: 'inline-flex', gap: 6 }}>
+                          <button
+                            onClick={() => deleteUser(u.id)}
+                            disabled={isBusy}
+                            style={{
+                              padding: '4px 10px', background: '#FF3B30', color: '#fff',
+                              border: 'none', borderRadius: 6, fontSize: 12, fontWeight: 700,
+                              cursor: 'pointer', opacity: isBusy ? 0.5 : 1,
+                            }}
+                          >
+                            {deleting === u.id ? '...' : 'Confirmar'}
+                          </button>
+                          <button
+                            onClick={() => setPending(null)}
+                            style={{ padding: '4px 10px', background: 'none', border: '1px solid #E5E5EA', borderRadius: 6, fontSize: 12, cursor: 'pointer', color: '#555' }}
+                          >
+                            Cancelar
+                          </button>
+                        </span>
+                      ) : (
+                        <button
+                          onClick={() => setPending(u.id)}
+                          disabled={isBusy}
+                          style={{
+                            padding: '4px 12px', background: 'none', border: '1px solid #FF3B30',
+                            color: '#FF3B30', borderRadius: 6, fontSize: 12, fontWeight: 600,
+                            cursor: 'pointer', opacity: isBusy ? 0.5 : 1,
+                          }}
+                        >
+                          Eliminar
+                        </button>
+                      )
+                    )}
+                  </td>
+                </tr>
+              )
+            })}
+            {filtered.length === 0 && (
+              <tr><td colSpan={5} style={{ padding: 24, textAlign: 'center', color: '#8E8E93' }}>Sin resultados</td></tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+    </>
+  )
+}
+
 // ── Main ───────────────────────────────────────────────────────────────────────
 
 const TABS = [
-  { id: 'datos',   label: 'Limpiar datos' },
-  { id: 'tecnico', label: 'Crear técnico' },
-  { id: 'admin',   label: 'Crear acceso admin' },
+  { id: 'datos',    label: 'Limpiar datos' },
+  { id: 'tecnico',  label: 'Crear técnico' },
+  { id: 'admin',    label: 'Crear acceso admin' },
+  { id: 'usuarios', label: 'Usuarios activos' },
 ]
 
 export default function AdminGestion() {
@@ -393,9 +579,10 @@ export default function AdminGestion() {
         ))}
       </div>
 
-      {tab === 'datos'   && <TabDatos />}
-      {tab === 'tecnico' && <TabTecnico />}
-      {tab === 'admin'   && <TabAdmin />}
+      {tab === 'datos'    && <TabDatos />}
+      {tab === 'tecnico'  && <TabTecnico />}
+      {tab === 'admin'    && <TabAdmin />}
+      {tab === 'usuarios' && <TabUsuarios />}
     </div>
   )
 }

@@ -82,6 +82,32 @@ export default async function handler(req, res) {
       return res.json({ ok: true, email: created.user.email })
     }
 
+    // ── Listar usuarios ────────────────────────────────────────────────────
+    if (action === 'list_users') {
+      const all = []
+      let page = 1
+      while (true) {
+        const { data, error } = await admin.auth.admin.listUsers({ page, perPage: 1000 })
+        if (error || !data?.users?.length) break
+        all.push(...data.users)
+        if (data.users.length < 1000) break
+        page++
+      }
+      return res.json({ ok: true, users: all })
+    }
+
+    // ── Eliminar usuario ───────────────────────────────────────────────────
+    if (action === 'delete_user') {
+      const { userId } = payload
+      if (!userId) return res.status(400).json({ error: 'userId requerido' })
+      // Protect main admin from deletion
+      const { data: { user: target } } = await admin.auth.admin.getUserById(userId)
+      if (target?.email === ADMIN_EMAIL) return res.status(403).json({ error: 'No puedes eliminar al admin principal' })
+      const { error } = await admin.auth.admin.deleteUser(userId)
+      if (error) return res.status(400).json({ error: error.message })
+      return res.json({ ok: true })
+    }
+
     return res.status(400).json({ error: 'Acción desconocida' })
   } catch (e) {
     return res.status(500).json({ error: e.message })
