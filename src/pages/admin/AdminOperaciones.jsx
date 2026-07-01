@@ -1,5 +1,18 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
 import { supabase } from '../../lib/supabase'
+
+async function fetchAll(builder) {
+  const PAGE = 1000
+  let all = [], from = 0
+  while (true) {
+    const { data } = await builder(from, from + PAGE - 1)
+    if (!data?.length) break
+    all = all.concat(data)
+    if (data.length < PAGE) break
+    from += PAGE
+  }
+  return all
+}
 import { calcAlcance, formatWeekRange, getWeekStart } from '../../lib/bonos'
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
@@ -558,14 +571,14 @@ export default function AdminOperaciones() {
   // Init: profiles + weeks + trend (con technician counts per week)
   useEffect(() => {
     async function init() {
-      const [{ data: profilesData }, { data: weeksData }] = await Promise.all([
-        supabase.from('profiles').select('usuario_ffm, nombre, sucursal, tipo_cuadrilla, meta_estrellas, tipo_distrito'),
-        supabase.from('orders').select('semana_inicio, usuario_ffm').order('semana_inicio', { ascending: false }),
+      const [profilesData, allRows] = await Promise.all([
+        fetchAll((f, t) => supabase.from('profiles').select('usuario_ffm, nombre, sucursal, tipo_cuadrilla, meta_estrellas, tipo_distrito').range(f, t)),
+        fetchAll((f, t) => supabase.from('orders').select('semana_inicio, usuario_ffm').order('semana_inicio', { ascending: false }).range(f, t)),
       ])
 
-      setProfiles(profilesData ?? [])
+      setProfiles(profilesData)
 
-      const allRows = weeksData ?? []
+
       const unique = [...new Set(allRows.map(w => w.semana_inicio))].sort((a, b) => b.localeCompare(a))
       setAvailableWeeks(unique)
 
@@ -593,10 +606,8 @@ export default function AdminOperaciones() {
     if (loadingInit) return
     if (!didMount.current) { didMount.current = true }
     setLoadingOrders(true)
-    supabase.from('orders').select('*').eq('semana_inicio', weekStart).then(({ data }) => {
-      setOrders(data ?? [])
-      setLoadingOrders(false)
-    })
+    fetchAll((f, t) => supabase.from('orders').select('*').eq('semana_inicio', weekStart).range(f, t))
+      .then(data => { setOrders(data); setLoadingOrders(false) })
   }, [weekStart, loadingInit])
 
   const profileMap = useMemo(() => {
