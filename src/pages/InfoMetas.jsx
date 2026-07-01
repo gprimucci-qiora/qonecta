@@ -2,16 +2,16 @@ import { useNavigate } from 'react-router-dom'
 import { useProfile } from '../hooks/useProfile'
 
 const SERVICIOS = [
-  { tipo: 'Instalación Empresarial',  estrellas: 8 },
-  { tipo: 'Instalación',              estrellas: 6 },
-  { tipo: 'Cambio De Domicilio',      estrellas: 6 },
-  { tipo: 'Soporte Empresarial',      estrellas: 5 },
-  { tipo: 'Mantenimiento Mayor',      estrellas: 4 },
-  { tipo: 'Soporte',                  estrellas: 3 },
-  { tipo: 'Mantenimiento Menor',      estrellas: 3 },
-  { tipo: 'Addons / Cambio de Equipo', estrellas: 2 },
+  { tipo: 'Instalación Empresarial',    estrellas: 8 },
+  { tipo: 'Instalación',                estrellas: 6 },
+  { tipo: 'Cambio De Domicilio',        estrellas: 6 },
+  { tipo: 'Soporte Empresarial',        estrellas: 5 },
+  { tipo: 'Mantenimiento Mayor',        estrellas: 4 },
+  { tipo: 'Soporte',                    estrellas: 3 },
+  { tipo: 'Mantenimiento Menor',        estrellas: 3 },
+  { tipo: 'Addons / Cambio de Equipo',  estrellas: 2 },
   { tipo: 'Factibilidad / Recolección', estrellas: 1 },
-  { tipo: 'No Aplica',                estrellas: 0 },
+  { tipo: 'No Aplica',                  estrellas: 0 },
 ]
 
 const NIVELES = [
@@ -31,24 +31,25 @@ export default function InfoMetas() {
         ← Inicio
       </button>
 
-      <h2 style={{ fontSize: 20, fontWeight: 700, color: '#fff', marginBottom: 20 }}>
+      <div style={{ fontSize: 20, fontWeight: 700, color: 'var(--color-text)', marginBottom: 16 }}>
         Metas y Sistema de Bono
-      </h2>
+      </div>
 
       {/* Tu meta */}
       {profile && (
-        <div className="card" style={{ marginBottom: 12 }}>
+        <div className="card">
           <div className="card-title">Tu meta semanal</div>
-          <div style={{ fontSize: 28, fontWeight: 700, color: '#111' }}>
-            {profile.meta_estrellas} <span style={{ fontSize: 15, fontWeight: 400, color: '#888' }}>estrellas</span>
+          <div style={{ fontSize: 28, fontWeight: 700, color: 'var(--color-text)' }}>
+            {profile.meta_estrellas}{' '}
+            <span style={{ fontSize: 15, fontWeight: 400, color: 'var(--color-text-sec)' }}>estrellas</span>
           </div>
-          <div style={{ fontSize: 13, color: '#888', marginTop: 4 }}>
+          <div style={{ fontSize: 13, color: 'var(--color-text-sec)', marginTop: 4 }}>
             Distrito Tipo {profile.tipo_distrito} · {profile.sucursal}
           </div>
         </div>
       )}
 
-      {/* Valor de servicios */}
+      {/* Servicios */}
       <div className="card">
         <div className="card-title">Valor de cada servicio</div>
         {SERVICIOS.map((s, i) => (
@@ -56,16 +57,16 @@ export default function InfoMetas() {
             display: 'flex',
             justifyContent: 'space-between',
             padding: '9px 0',
-            borderBottom: i < SERVICIOS.length - 1 ? '1px solid #f3f3f3' : 'none',
+            borderBottom: i < SERVICIOS.length - 1 ? '1px solid var(--color-sep)' : 'none',
             fontSize: 14,
           }}>
-            <span style={{ color: '#111' }}>{s.tipo}</span>
-            <span style={{ fontWeight: 700, color: '#111' }}>{s.estrellas} ★</span>
+            <span style={{ color: 'var(--color-text)' }}>{s.tipo}</span>
+            <span style={{ fontWeight: 700, color: 'var(--color-text)' }}>{s.estrellas} ★</span>
           </div>
         ))}
       </div>
 
-      {/* Niveles de bono */}
+      {/* Niveles */}
       <div className="card">
         <div className="card-title">Niveles de cumplimiento</div>
         {NIVELES.map((n, i) => (
@@ -74,7 +75,7 @@ export default function InfoMetas() {
             alignItems: 'center',
             gap: 12,
             padding: '10px 0',
-            borderBottom: i < NIVELES.length - 1 ? '1px solid #f3f3f3' : 'none',
+            borderBottom: i < NIVELES.length - 1 ? '1px solid var(--color-sep)' : 'none',
           }}>
             <div style={{
               background: n.color,
@@ -89,7 +90,7 @@ export default function InfoMetas() {
             }}>
               {n.rango}
             </div>
-            <span style={{ fontSize: 14, color: '#333' }}>{n.descripcion}</span>
+            <span style={{ fontSize: 14, color: 'var(--color-text)' }}>{n.descripcion}</span>
           </div>
         ))}
       </div>
@@ -97,7 +98,7 @@ export default function InfoMetas() {
       {/* Inasistencias */}
       <div className="card">
         <div className="card-title">Descuento por inasistencia</div>
-        <p style={{ fontSize: 13, color: '#555', lineHeight: 1.6, marginBottom: 12 }}>
+        <p style={{ fontSize: 13, color: 'var(--color-text-sec)', lineHeight: 1.6, marginBottom: 12 }}>
           Aplica en algunos distritos. La semana va de lunes a domingo. Un día cuenta como trabajado si tienes al menos 1 orden completada.
         </p>
         {[
@@ -109,11 +110,11 @@ export default function InfoMetas() {
             display: 'flex',
             justifyContent: 'space-between',
             padding: '9px 0',
-            borderBottom: i < arr.length - 1 ? '1px solid #f3f3f3' : 'none',
+            borderBottom: i < arr.length - 1 ? '1px solid var(--color-sep)' : 'none',
             fontSize: 14,
           }}>
-            <span style={{ color: '#333' }}>{row.dias}</span>
-            <span style={{ fontWeight: 500, color: '#111', textAlign: 'right' }}>{row.desc}</span>
+            <span style={{ color: 'var(--color-text)' }}>{row.dias}</span>
+            <span style={{ fontWeight: 500, color: 'var(--color-text)', textAlign: 'right' }}>{row.desc}</span>
           </div>
         ))}
       </div>
