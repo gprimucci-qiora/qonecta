@@ -1,12 +1,10 @@
 import { useNavigate } from 'react-router-dom'
 import { useAllWeeks } from '../hooks/useOrders'
-import { useProfile } from '../hooks/useProfile'
 import { calcAlcance, formatWeekRange } from '../lib/bonos'
 import NivelBadge from '../components/NivelBadge'
 
 export default function History() {
   const navigate = useNavigate()
-  const { profile } = useProfile()
   const { weeks, loading } = useAllWeeks()
 
   return (
