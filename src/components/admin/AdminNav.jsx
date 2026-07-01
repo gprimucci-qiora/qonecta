@@ -3,6 +3,7 @@ import { useAuth } from '../../hooks/useAuth'
 
 const NAV_ITEMS = [
   { to: '/admin',            label: 'Overview',    icon: '◼' },
+  { to: '/admin/operaciones', label: 'Operaciones', icon: '📊' },
   { to: '/admin/tecnicos',   label: 'Técnicos',    icon: '👥' },
   { to: '/admin/sucursales', label: 'Sucursales',  icon: '🏢' },
   { to: '/admin/tendencia',  label: 'Tendencia',   icon: '📈' },

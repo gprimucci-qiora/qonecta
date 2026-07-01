@@ -14,6 +14,7 @@ import AdminSucursales from './pages/admin/AdminSucursales'
 import AdminTendencia from './pages/admin/AdminTendencia'
 import AdminAnuncios from './pages/admin/AdminAnuncios'
 import AdminUpload from './pages/admin/AdminUpload'
+import AdminOperaciones from './pages/admin/AdminOperaciones'
 
 const ADMIN_EMAIL = 'g.primucci@qiora.com.mx'
 
@@ -57,6 +58,7 @@ function AdminShell() {
       <main className="admin-content">
         <Routes>
           <Route index element={<AdminHome />} />
+          <Route path="operaciones" element={<AdminOperaciones />} />
           <Route path="tecnicos" element={<AdminTecnicos />} />
           <Route path="sucursales" element={<AdminSucursales />} />
           <Route path="tendencia" element={<AdminTendencia />} />
