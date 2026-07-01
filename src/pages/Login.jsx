@@ -13,13 +13,15 @@ export default function Login() {
     e.preventDefault()
     setError(null)
     setLoading(true)
-    const email = `${username.trim().toLowerCase()}@qiora.app`
-    const { error: authError } = await supabase.auth.signInWithPassword({ email, password })
+    const raw = username.trim()
+    const email = raw.includes('@') ? raw.toLowerCase() : `${raw.toLowerCase()}@qiora.app`
+    const { data, error: authError } = await supabase.auth.signInWithPassword({ email, password })
     if (authError) {
       setError('Usuario o contraseña incorrectos')
       setLoading(false)
     } else {
-      navigate('/home', { replace: true })
+      const dest = data.user?.email === 'g.primucci@qiora.com.mx' ? '/admin' : '/home'
+      navigate(dest, { replace: true })
     }
   }
 
@@ -32,7 +34,7 @@ export default function Login() {
 
       <form className="login-form" onSubmit={handleSubmit}>
         <div className="field-group">
-          <label htmlFor="username">Usuario FFM</label>
+          <label htmlFor="username">Usuario / Email</label>
           <input
             id="username"
             type="text"
@@ -41,7 +43,7 @@ export default function Login() {
             autoComplete="username"
             value={username}
             onChange={e => setUsername(e.target.value)}
-            placeholder="ej. MEGE3GDLT0756"
+            placeholder="FFM o email"
             required
           />
         </div>

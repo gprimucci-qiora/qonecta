@@ -7,6 +7,15 @@ import WeekDetail from './pages/WeekDetail'
 import Profile from './pages/Profile'
 import InfoMetas from './pages/InfoMetas'
 import BottomNav from './components/BottomNav'
+import AdminNav from './components/admin/AdminNav'
+import AdminHome from './pages/admin/AdminHome'
+import AdminTecnicos from './pages/admin/AdminTecnicos'
+import AdminSucursales from './pages/admin/AdminSucursales'
+import AdminTendencia from './pages/admin/AdminTendencia'
+import AdminAnuncios from './pages/admin/AdminAnuncios'
+import AdminUpload from './pages/admin/AdminUpload'
+
+const ADMIN_EMAIL = 'g.primucci@qiora.com.mx'
 
 function AppShell() {
   const { user, loading } = useAuth()
@@ -37,12 +46,36 @@ function AppShell() {
   )
 }
 
+function AdminShell() {
+  const { user, loading } = useAuth()
+  if (loading) return <div className="loading-screen"><span>Cargando...</span></div>
+  if (!user) return <Navigate to="/login" replace />
+  if (user.email !== ADMIN_EMAIL) return <Navigate to="/home" replace />
+  return (
+    <div className="admin-layout">
+      <AdminNav />
+      <main className="admin-content">
+        <Routes>
+          <Route path="/admin" element={<AdminHome />} />
+          <Route path="/admin/tecnicos" element={<AdminTecnicos />} />
+          <Route path="/admin/sucursales" element={<AdminSucursales />} />
+          <Route path="/admin/tendencia" element={<AdminTendencia />} />
+          <Route path="/admin/anuncios" element={<AdminAnuncios />} />
+          <Route path="/admin/upload" element={<AdminUpload />} />
+          <Route path="*" element={<Navigate to="/admin" replace />} />
+        </Routes>
+      </main>
+    </div>
+  )
+}
+
 export default function App() {
   return (
     <AuthProvider>
       <BrowserRouter>
         <Routes>
           <Route path="/login" element={<Login />} />
+          <Route path="/admin/*" element={<AdminShell />} />
           <Route path="/*" element={<AppShell />} />
         </Routes>
       </BrowserRouter>
