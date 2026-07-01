@@ -1,16 +1,31 @@
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useProfile } from '../hooks/useProfile'
 import { useCurrentWeekOrders, useAnnouncement } from '../hooks/useOrders'
-import { calcAlcance, getNivel, formatWeekRange, getWeekStart } from '../lib/bonos'
+import { calcAlcance, formatWeekRange, getWeekStart } from '../lib/bonos'
 import Avatar from '../components/Avatar'
 import NivelBadge from '../components/NivelBadge'
 import OrderItem from '../components/OrderItem'
+import Gauge from '../components/Gauge'
+
+const DAY_LABELS = ['LUN', 'MAR', 'MIÉ', 'JUE', 'VIE', 'SÁB', 'DOM']
 
 export default function Home() {
   const navigate = useNavigate()
   const { profile, loading: profileLoading, error: profileError } = useProfile()
   const { orders, totalEstrellas, loading: ordersLoading } = useCurrentWeekOrders()
   const { announcement } = useAnnouncement()
+
+  const weekStart = getWeekStart()
+  const tabDays = Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(weekStart + 'T12:00:00')
+    d.setDate(d.getDate() + i)
+    return d.toISOString().split('T')[0]
+  })
+  const todayStr = new Date().toISOString().split('T')[0]
+  const [selectedDay, setSelectedDay] = useState(
+    tabDays.includes(todayStr) ? todayStr : tabDays[0]
+  )
 
   if (profileLoading) return <div className="loading-screen"><span>Cargando...</span></div>
   if (profileError) return (
@@ -22,106 +37,86 @@ export default function Home() {
   )
   if (!profile) return null
 
-  const weekStart = getWeekStart()
   const alcancePct = calcAlcance(totalEstrellas, profile.meta_estrellas)
-  const nivel = getNivel(alcancePct)
-  const fillPct = Math.min(alcancePct, 100)
-  const recentOrders = orders.slice(0, 5)
+  const dayOrders = orders.filter(o => o.fecha_termino === selectedDay)
 
   return (
     <div className="page">
-      {/* Header */}
-      <div className="page-header">
-        <Avatar name={profile.nombre} size={48} />
-        <div className="page-header-info">
-          <div className="page-header-name">{profile.nombre}</div>
-          <div className="page-header-sub">{profile.tipo_cuadrilla}</div>
-        </div>
-      </div>
 
-      {/* Info técnico */}
-      <div className="card">
-        <div className="card-title">Tu información</div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-          <InfoRow label="Sucursal" value={profile.sucursal} />
-          <InfoRow label="Coordinador" value={profile.coordinador} />
-          <InfoRow label="Usuario FFM" value={profile.usuario_ffm} />
-        </div>
-      </div>
-
-      {/* Aviso importante */}
-      {announcement && (
-        <div className="card" style={{ background: '#1a1a1a', border: '1px solid #333' }}>
-          <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
-            <span style={{ fontSize: 18 }}>📢</span>
-            <p style={{ fontSize: 14, color: '#eee', lineHeight: 1.5 }}>{announcement}</p>
+      {/* 1. Welcome row */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '16px 0 8px' }}>
+        <Avatar name={profile.nombre} size={44} />
+        <div>
+          <div style={{ fontSize: 16, fontWeight: 700 }}>Hola, {profile.nombre.split(' ')[0]}</div>
+          <div style={{ fontSize: 13, color: 'var(--color-text-sec)' }}>
+            {profile.sucursal} · {profile.tipo_cuadrilla}
           </div>
+        </div>
+      </div>
+
+      {/* 2. Gauge card */}
+      <div className="card" style={{ textAlign: 'center', paddingTop: 20, paddingBottom: 12 }}>
+        <div style={{ fontSize: 13, color: 'var(--color-text-sec)', marginBottom: 8 }}>
+          Semana {formatWeekRange(weekStart)}
+        </div>
+        <Gauge value={totalEstrellas} max={profile.meta_estrellas} />
+        <div style={{ marginTop: 8, display: 'flex', justifyContent: 'center', gap: 8, alignItems: 'center' }}>
+          <NivelBadge alcancePct={alcancePct} />
+          <span style={{ fontSize: 13, color: 'var(--color-text-sec)' }}>
+            {alcancePct.toFixed(1)}% de tu meta
+          </span>
+        </div>
+      </div>
+
+      {/* 3. Announcement */}
+      {announcement && (
+        <div className="card-aviso">
+          <span style={{ fontSize: 16 }}>📢</span>
+          <p style={{ flex: 1, fontSize: 14, lineHeight: 1.5 }}>{announcement}</p>
         </div>
       )}
 
-      {/* Meta semanal */}
-      <div className="card">
-        <div className="card-title">Meta semanal — {formatWeekRange(weekStart)}</div>
-        {ordersLoading ? (
-          <p style={{ color: '#888', fontSize: 14 }}>Calculando...</p>
-        ) : (
-          <>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-              <span style={{ fontSize: 22, fontWeight: 700 }}>
-                {totalEstrellas} <span style={{ fontSize: 14, fontWeight: 400, color: '#888' }}>/ {profile.meta_estrellas} ★</span>
-              </span>
-              <NivelBadge alcancePct={alcancePct} />
-            </div>
-            <div className="progress-bar">
-              <div
-                className="progress-fill"
-                style={{ width: `${fillPct}%`, background: nivel.color }}
-              />
-            </div>
-            <div style={{ fontSize: 13, color: '#888', marginTop: 4 }}>
-              {alcancePct.toFixed(1)}% de tu meta
-            </div>
-          </>
-        )}
-      </div>
-
-      {/* Órdenes recientes */}
-      <div className="card">
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
-          <div className="card-title" style={{ marginBottom: 0 }}>Órdenes recientes</div>
-          {orders.length > 5 && (
-            <button className="btn-text" onClick={() => navigate('/history')}>
-              Ver todo →
-            </button>
+      {/* 4. Day tabs + orders */}
+      <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+        <div className="day-tabs">
+          {tabDays.map((day, i) => {
+            const hasOrders = orders.some(o => o.fecha_termino === day)
+            return (
+              <button
+                key={day}
+                className={`day-tab${selectedDay === day ? ' active' : ''}`}
+                onClick={() => setSelectedDay(day)}
+              >
+                <span className="day-tab-label">{DAY_LABELS[i]}</span>
+                {hasOrders && <span className="day-tab-dot" />}
+              </button>
+            )
+          })}
+        </div>
+        <div style={{ padding: '8px 16px 16px' }}>
+          {ordersLoading ? (
+            <p style={{ color: 'var(--color-text-sec)', fontSize: 14, padding: '12px 0' }}>
+              Cargando...
+            </p>
+          ) : dayOrders.length === 0 ? (
+            <p style={{ color: 'var(--color-text-sec)', fontSize: 14, padding: '12px 0', textAlign: 'center' }}>
+              Sin órdenes este día.
+            </p>
+          ) : (
+            dayOrders.map(o => <OrderItem key={o.id} order={o} />)
           )}
         </div>
-
-        {ordersLoading ? (
-          <p style={{ color: '#888', fontSize: 14 }}>Cargando...</p>
-        ) : recentOrders.length === 0 ? (
-          <p style={{ color: '#888', fontSize: 14, padding: '12px 0' }}>Sin órdenes esta semana aún.</p>
-        ) : (
-          recentOrders.map(o => <OrderItem key={o.id} order={o} />)
-        )}
       </div>
 
-      {/* Info de metas */}
+      {/* 5. Footer link */}
       <button
         className="btn-text"
-        style={{ width: '100%', textAlign: 'center', padding: '12px 0' }}
+        style={{ width: '100%', textAlign: 'center', padding: '12px 0', marginBottom: 8 }}
         onClick={() => navigate('/info')}
       >
         ¿Cómo funciona mi bono? →
       </button>
-    </div>
-  )
-}
 
-function InfoRow({ label, value }) {
-  return (
-    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 14 }}>
-      <span style={{ color: '#888' }}>{label}</span>
-      <span style={{ fontWeight: 500, color: '#111' }}>{value ?? '—'}</span>
     </div>
   )
 }
