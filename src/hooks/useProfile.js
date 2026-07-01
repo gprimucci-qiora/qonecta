@@ -6,6 +6,7 @@ export function useProfile() {
   const { user } = useAuth()
   const [profile, setProfile] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
 
   useEffect(() => {
     if (!user) { setLoading(false); return }
@@ -15,11 +16,17 @@ export function useProfile() {
       .eq('id', user.id)
       .single()
       .then(({ data, error }) => {
-        if (error) console.error(error)
-        setProfile(data ?? null)
+        if (error) {
+          console.error(error)
+          setError(error)
+          setProfile(null)
+        } else {
+          setProfile(data ?? null)
+          setError(null)
+        }
         setLoading(false)
       })
   }, [user])
 
-  return { profile, loading }
+  return { profile, loading, error }
 }

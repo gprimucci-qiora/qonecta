@@ -36,7 +36,7 @@ export default function Login() {
           <input
             id="username"
             type="text"
-            autoCapitalize="characters"
+            autoCapitalize="none"
             autoCorrect="off"
             autoComplete="username"
             value={username}

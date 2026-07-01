@@ -4,7 +4,7 @@ import { useAuth } from '../hooks/useAuth'
 import Avatar from '../components/Avatar'
 
 export default function Profile() {
-  const { profile, loading } = useProfile()
+  const { profile, loading, error: profileError } = useProfile()
   const { signOut } = useAuth()
   const navigate = useNavigate()
 
@@ -14,6 +14,13 @@ export default function Profile() {
   }
 
   if (loading) return <div className="loading-screen"><span>Cargando...</span></div>
+  if (profileError) return (
+    <div className="loading-screen">
+      <span style={{ color: '#888', fontSize: 14, textAlign: 'center', padding: '0 32px' }}>
+        No se pudo cargar tu perfil. Verifica tu conexión e intenta de nuevo.
+      </span>
+    </div>
+  )
   if (!profile) return null
 
   return (

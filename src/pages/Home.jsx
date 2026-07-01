@@ -8,11 +8,18 @@ import OrderItem from '../components/OrderItem'
 
 export default function Home() {
   const navigate = useNavigate()
-  const { profile, loading: profileLoading } = useProfile()
+  const { profile, loading: profileLoading, error: profileError } = useProfile()
   const { orders, totalEstrellas, loading: ordersLoading } = useCurrentWeekOrders()
   const { announcement } = useAnnouncement()
 
   if (profileLoading) return <div className="loading-screen"><span>Cargando...</span></div>
+  if (profileError) return (
+    <div className="loading-screen">
+      <span style={{ color: '#888', fontSize: 14, textAlign: 'center', padding: '0 32px' }}>
+        No se pudo cargar tu perfil. Verifica tu conexión e intenta de nuevo.
+      </span>
+    </div>
+  )
   if (!profile) return null
 
   const weekStart = getWeekStart()
