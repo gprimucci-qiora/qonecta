@@ -1,33 +1,41 @@
 import { createClient } from '@supabase/supabase-js'
 
-const SUPABASE_URL = 'https://pubcbstrapwwfzuqiklf.supabase.co'
-const ADMIN_EMAIL  = 'g.primucci@qiora.com.mx'
+const SUPABASE_URL  = 'https://pubcbstrapwwfzuqiklf.supabase.co'
+const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB1YmNic3RyYXB3d2Z6dXFpa2xmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI5MjU3MTUsImV4cCI6MjA5ODUwMTcxNX0.Jy7GWFfDcSaRSfNLSRvAL_xqwIdpLOfZmNehMxlq4bM'
+const ADMIN_EMAIL   = 'g.primucci@qiora.com.mx'
 
-function getAdmin() {
+// Use anon key for token verification — no env vars needed for this part
+const authClient = createClient(SUPABASE_URL, SUPABASE_ANON)
+
+function getAdminClient() {
   const key = process.env.SUPABASE_SERVICE_KEY
-  if (!key) throw new Error('SUPABASE_SERVICE_KEY not set')
-  return createClient(SUPABASE_URL, key)
+  if (!key) throw new Error('SUPABASE_SERVICE_KEY no está configurado en Vercel')
+  return createClient(SUPABASE_URL, key, { auth: { persistSession: false } })
 }
 
 export default async function handler(req, res) {
-  res.setHeader('Access-Control-Allow-Origin', '*')
   if (req.method === 'OPTIONS') return res.status(200).end()
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' })
 
-  // Verify caller is an authenticated admin
-  const token = req.headers.authorization?.replace('Bearer ', '')
-  if (!token) return res.status(401).json({ error: 'No token' })
+  // Verify token using anon client (always works, no env dependency)
+  const token = req.headers.authorization?.replace('Bearer ', '').trim()
+  if (!token) return res.status(401).json({ error: 'No se recibió token de autenticación' })
 
-  let admin
-  try { admin = getAdmin() } catch (e) { return res.status(500).json({ error: e.message }) }
-
-  const { data: { user }, error: authErr } = await admin.auth.getUser(token)
-  if (authErr || !user) return res.status(401).json({ error: 'Token inválido' })
+  const { data: { user }, error: authErr } = await authClient.auth.getUser(token)
+  if (authErr || !user) {
+    return res.status(401).json({ error: `Sesión inválida: ${authErr?.message || 'usuario no encontrado'}` })
+  }
 
   const isAdmin = user.email === ADMIN_EMAIL || user.app_metadata?.role === 'admin'
-  if (!isAdmin) return res.status(403).json({ error: 'Sin permisos' })
+  if (!isAdmin) return res.status(403).json({ error: 'Sin permisos de administrador' })
 
   const { action, ...payload } = req.body || {}
+
+  // Lazy-init admin client — only fails here if SERVICE_KEY is missing
+  let admin
+  try { admin = getAdminClient() } catch (e) {
+    return res.status(500).json({ error: e.message })
+  }
 
   try {
     // ── Crear técnico ──────────────────────────────────────────────────────
