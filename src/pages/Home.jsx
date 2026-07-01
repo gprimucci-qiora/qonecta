@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useProfile } from '../hooks/useProfile'
 import { useCurrentWeekOrders, useAnnouncement } from '../hooks/useOrders'
-import { calcAlcance, formatWeekRange, getWeekStart } from '../lib/bonos'
+import { calcAlcance, getNivel, formatWeekRange, getWeekStart } from '../lib/bonos'
 import Avatar from '../components/Avatar'
 import NivelBadge from '../components/NivelBadge'
 import OrderItem from '../components/OrderItem'
@@ -38,6 +38,7 @@ export default function Home() {
   if (!profile) return null
 
   const alcancePct = calcAlcance(totalEstrellas, profile.meta_estrellas)
+  const nivel = getNivel(alcancePct)
   const dayOrders = orders.filter(o => o.fecha_termino === selectedDay)
 
   return (
@@ -55,16 +56,23 @@ export default function Home() {
       </div>
 
       {/* 2. Gauge card */}
-      <div className="card" style={{ textAlign: 'center', paddingTop: 20, paddingBottom: 12 }}>
-        <div style={{ fontSize: 13, color: 'var(--color-text-sec)', marginBottom: 8 }}>
+      <div className="card" style={{ textAlign: 'center', paddingTop: 16, paddingBottom: 16 }}>
+        <div style={{ fontSize: 12, color: 'var(--color-text-sec)', marginBottom: 4, letterSpacing: 0.3 }}>
           Semana {formatWeekRange(weekStart)}
         </div>
         <Gauge value={totalEstrellas} max={profile.meta_estrellas} />
-        <div style={{ marginTop: 8, display: 'flex', justifyContent: 'center', gap: 8, alignItems: 'center' }}>
-          <NivelBadge alcancePct={alcancePct} />
-          <span style={{ fontSize: 13, color: 'var(--color-text-sec)' }}>
-            {alcancePct.toFixed(1)}% de tu meta
-          </span>
+        {/* Stats row below gauge */}
+        <div style={{ marginTop: 4 }}>
+          <div style={{ fontSize: 32, fontWeight: 700, color: 'var(--color-text)', lineHeight: 1 }}>
+            {alcancePct.toFixed(1)}
+            <span style={{ fontSize: 18, fontWeight: 600, color: nivel.color }}>%</span>
+          </div>
+          <div style={{ fontSize: 13, color: 'var(--color-text-sec)', marginTop: 4 }}>
+            {totalEstrellas} de {profile.meta_estrellas} estrellas esta semana
+          </div>
+          <div style={{ marginTop: 8 }}>
+            <NivelBadge alcancePct={alcancePct} />
+          </div>
         </div>
       </div>
 
