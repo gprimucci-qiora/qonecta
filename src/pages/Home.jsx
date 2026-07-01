@@ -41,6 +41,10 @@ export default function Home() {
   const nivel = getNivel(alcancePct)
   const dayOrders = orders.filter(o => o.fecha_termino === selectedDay)
 
+  const totalOrdenes = orders.length
+  const diasTrabajados = new Set(orders.map(o => o.fecha_termino)).size
+  const productividad = diasTrabajados > 0 ? (totalOrdenes / diasTrabajados).toFixed(1) : '0'
+
   return (
     <div className="page">
 
@@ -76,15 +80,44 @@ export default function Home() {
         </div>
       </div>
 
-      {/* 3. Announcement */}
+      {/* 3. Mini KPIs */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>
+        {[
+          { label: 'Órdenes', value: totalOrdenes, icon: '📋' },
+          { label: 'Días trab.', value: `${diasTrabajados}/6`, icon: '📅' },
+          { label: 'OS / día', value: productividad, icon: '⚡' },
+        ].map(k => (
+          <div key={k.label} className="card" style={{ textAlign: 'center', padding: '10px 8px' }}>
+            <div style={{ fontSize: 11, marginBottom: 2 }}>{k.icon}</div>
+            <div style={{ fontSize: 20, fontWeight: 700, color: 'var(--color-text)', lineHeight: 1 }}>{k.value}</div>
+            <div style={{ fontSize: 10, color: 'var(--color-text-sec)', marginTop: 3, letterSpacing: 0.2 }}>{k.label}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* 4. Announcement */}
       {announcement && (
-        <div className="card-aviso">
-          <span style={{ fontSize: 16 }}>📢</span>
-          <p style={{ flex: 1, fontSize: 14, lineHeight: 1.5 }}>{announcement}</p>
+        <div style={{
+          background: '#FFF0F0',
+          border: '1.5px solid #FF3B30',
+          borderLeft: '4px solid #FF3B30',
+          borderRadius: 12,
+          padding: '12px 14px',
+          display: 'flex',
+          gap: 10,
+          alignItems: 'flex-start',
+        }}>
+          <span style={{ fontSize: 20, flexShrink: 0, lineHeight: 1.3 }}>🚨</span>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 10, fontWeight: 700, color: '#FF3B30', textTransform: 'uppercase', letterSpacing: '.6px', marginBottom: 4 }}>
+              Aviso importante
+            </div>
+            <p style={{ fontSize: 14, lineHeight: 1.5, color: '#1C1C1E', margin: 0 }}>{announcement}</p>
+          </div>
         </div>
       )}
 
-      {/* 4. Day tabs + orders */}
+      {/* 5. Day tabs + orders */}
       <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
         <div className="day-tabs">
           {tabDays.map((day, i) => {
@@ -116,7 +149,7 @@ export default function Home() {
         </div>
       </div>
 
-      {/* 5. Footer link */}
+      {/* 6. Footer link */}
       <button
         className="btn-text"
         style={{ width: '100%', textAlign: 'center', padding: '12px 0', marginBottom: 8 }}

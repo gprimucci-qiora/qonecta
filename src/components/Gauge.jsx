@@ -16,7 +16,7 @@ export default function Gauge({ value, max }) {
   const fillAngle = Math.PI - pct * Math.PI
   const [fx1, fy1] = polar(Math.PI)
   const [fx2, fy2] = polar(fillAngle)
-  const largeArc = pct > 0.5 ? 1 : 0
+  const largeArc = 0
   const fillArc = pct > 0
     ? `M ${fx1} ${fy1} A ${R} ${R} 0 ${largeArc} 1 ${fx2} ${fy2}`
     : null
