@@ -56,12 +56,12 @@ function AdminShell() {
       <AdminNav />
       <main className="admin-content">
         <Routes>
-          <Route path="/admin" element={<AdminHome />} />
-          <Route path="/admin/tecnicos" element={<AdminTecnicos />} />
-          <Route path="/admin/sucursales" element={<AdminSucursales />} />
-          <Route path="/admin/tendencia" element={<AdminTendencia />} />
-          <Route path="/admin/anuncios" element={<AdminAnuncios />} />
-          <Route path="/admin/upload" element={<AdminUpload />} />
+          <Route index element={<AdminHome />} />
+          <Route path="tecnicos" element={<AdminTecnicos />} />
+          <Route path="sucursales" element={<AdminSucursales />} />
+          <Route path="tendencia" element={<AdminTendencia />} />
+          <Route path="anuncios" element={<AdminAnuncios />} />
+          <Route path="upload" element={<AdminUpload />} />
           <Route path="*" element={<Navigate to="/admin" replace />} />
         </Routes>
       </main>
