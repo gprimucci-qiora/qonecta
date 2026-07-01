@@ -20,7 +20,8 @@ export default function Login() {
       setError('Usuario o contraseña incorrectos')
       setLoading(false)
     } else {
-      const dest = data.user?.email === 'g.primucci@qiora.com.mx' ? '/admin' : '/home'
+      const u = data.user
+      const dest = (u?.email === 'g.primucci@qiora.com.mx' || u?.app_metadata?.role === 'admin') ? '/admin' : '/home'
       navigate(dest, { replace: true })
     }
   }

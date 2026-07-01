@@ -15,8 +15,12 @@ import AdminTendencia from './pages/admin/AdminTendencia'
 import AdminAnuncios from './pages/admin/AdminAnuncios'
 import AdminUpload from './pages/admin/AdminUpload'
 import AdminOperaciones from './pages/admin/AdminOperaciones'
+import AdminGestion from './pages/admin/AdminGestion'
 
 const ADMIN_EMAIL = 'g.primucci@qiora.com.mx'
+function isAdmin(user) {
+  return user.email === ADMIN_EMAIL || user.app_metadata?.role === 'admin'
+}
 
 function AppShell() {
   const { user, loading } = useAuth()
@@ -51,7 +55,7 @@ function AdminShell() {
   const { user, loading } = useAuth()
   if (loading) return <div className="loading-screen"><span>Cargando...</span></div>
   if (!user) return <Navigate to="/login" replace />
-  if (user.email !== ADMIN_EMAIL) return <Navigate to="/home" replace />
+  if (!isAdmin(user)) return <Navigate to="/home" replace />
   return (
     <div className="admin-layout">
       <AdminNav />
@@ -64,6 +68,7 @@ function AdminShell() {
           <Route path="tendencia" element={<AdminTendencia />} />
           <Route path="anuncios" element={<AdminAnuncios />} />
           <Route path="upload" element={<AdminUpload />} />
+          <Route path="gestion" element={<AdminGestion />} />
           <Route path="*" element={<Navigate to="/admin" replace />} />
         </Routes>
       </main>

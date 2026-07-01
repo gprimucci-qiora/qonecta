@@ -9,6 +9,7 @@ const NAV_ITEMS = [
   { to: '/admin/tendencia',  label: 'Tendencia',   icon: '📈' },
   { to: '/admin/anuncios',   label: 'Anuncios',    icon: '📢' },
   { to: '/admin/upload',     label: 'Subir Excel', icon: '⬆' },
+  { to: '/admin/gestion',   label: 'Gestión',     icon: '⚙️' },
 ]
 
 export default function AdminNav() {
