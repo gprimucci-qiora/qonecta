@@ -20,7 +20,8 @@ export function useCurrentWeekOrders() {
       .eq('usuario_ffm', profile.usuario_ffm)
       .eq('semana_inicio', getWeekStart())
       .order('fecha_termino', { ascending: false })
-      .then(({ data }) => {
+      .then(({ data, error }) => {
+        if (error) console.error(error)
         setOrders(data ?? [])
         setLoading(false)
       })
@@ -41,7 +42,8 @@ export function useAllWeeks() {
       .select('semana_inicio, estrellas, meta_estrellas')
       .eq('usuario_ffm', profile.usuario_ffm)
       .order('semana_inicio', { ascending: false })
-      .then(({ data }) => {
+      .then(({ data, error }) => {
+        if (error) console.error(error)
         const grouped = {}
         ;(data ?? []).forEach(o => {
           if (!grouped[o.semana_inicio]) {
@@ -70,7 +72,8 @@ export function useWeekOrders(weekStart) {
       .eq('usuario_ffm', profile.usuario_ffm)
       .eq('semana_inicio', weekStart)
       .order('fecha_termino', { ascending: true })
-      .then(({ data }) => {
+      .then(({ data, error }) => {
+        if (error) console.error(error)
         setOrders(data ?? [])
         setLoading(false)
       })
@@ -90,7 +93,8 @@ export function useAnnouncement() {
       .eq('activo', true)
       .order('created_at', { ascending: false })
       .limit(1)
-      .then(({ data }) => {
+      .then(({ data, error }) => {
+        if (error) console.error(error)
         setAnnouncement(data?.[0]?.mensaje ?? null)
         setLoading(false)
       })

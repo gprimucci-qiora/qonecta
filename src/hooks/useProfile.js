@@ -14,8 +14,9 @@ export function useProfile() {
       .select('*')
       .eq('id', user.id)
       .single()
-      .then(({ data }) => {
-        setProfile(data)
+      .then(({ data, error }) => {
+        if (error) console.error(error)
+        setProfile(data ?? null)
         setLoading(false)
       })
   }, [user])
