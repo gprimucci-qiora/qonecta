@@ -1,4 +1,4 @@
-export default function Gauge({ value, max, color }) {
+export default function Gauge({ value, max }) {
   const pct = max > 0 ? Math.min(value / max, 1) : 0
 
   // Semicircle: from 180° (left) to 0° (right), counterclockwise

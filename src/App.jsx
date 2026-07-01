@@ -9,7 +9,7 @@ import InfoMetas from './pages/InfoMetas'
 import BottomNav from './components/BottomNav'
 
 function AppShell() {
-  const { user, loading, signOut } = useAuth()
+  const { user, loading } = useAuth()
   if (loading) return <div className="loading-screen"><span>Cargando...</span></div>
   if (!user) return <Navigate to="/login" replace />
   return (
