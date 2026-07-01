@@ -1,0 +1,100 @@
+import { useState, useEffect } from 'react'
+import { supabase } from '../lib/supabase'
+import { useProfile } from './useProfile'
+import { getWeekStart } from '../lib/bonos'
+
+function sumEstrellas(orders) {
+  return orders.reduce((acc, o) => acc + Number(o.estrellas), 0)
+}
+
+export function useCurrentWeekOrders() {
+  const { profile } = useProfile()
+  const [orders, setOrders] = useState([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    if (!profile) return
+    supabase
+      .from('orders')
+      .select('*')
+      .eq('usuario_ffm', profile.usuario_ffm)
+      .eq('semana_inicio', getWeekStart())
+      .order('fecha_termino', { ascending: false })
+      .then(({ data }) => {
+        setOrders(data ?? [])
+        setLoading(false)
+      })
+  }, [profile])
+
+  return { orders, totalEstrellas: sumEstrellas(orders), loading }
+}
+
+export function useAllWeeks() {
+  const { profile } = useProfile()
+  const [weeks, setWeeks] = useState([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    if (!profile) return
+    supabase
+      .from('orders')
+      .select('semana_inicio, estrellas, meta_estrellas')
+      .eq('usuario_ffm', profile.usuario_ffm)
+      .order('semana_inicio', { ascending: false })
+      .then(({ data }) => {
+        const grouped = {}
+        ;(data ?? []).forEach(o => {
+          if (!grouped[o.semana_inicio]) {
+            grouped[o.semana_inicio] = { semana_inicio: o.semana_inicio, total_estrellas: 0, meta_estrellas: Number(o.meta_estrellas) }
+          }
+          grouped[o.semana_inicio].total_estrellas += Number(o.estrellas)
+        })
+        setWeeks(Object.values(grouped))
+        setLoading(false)
+      })
+  }, [profile])
+
+  return { weeks, loading }
+}
+
+export function useWeekOrders(weekStart) {
+  const { profile } = useProfile()
+  const [orders, setOrders] = useState([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    if (!profile || !weekStart) return
+    supabase
+      .from('orders')
+      .select('*')
+      .eq('usuario_ffm', profile.usuario_ffm)
+      .eq('semana_inicio', weekStart)
+      .order('fecha_termino', { ascending: true })
+      .then(({ data }) => {
+        setOrders(data ?? [])
+        setLoading(false)
+      })
+  }, [profile, weekStart])
+
+  return { orders, totalEstrellas: sumEstrellas(orders), loading }
+}
+
+export function useAnnouncement() {
+  const [announcement, setAnnouncement] = useState(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    supabase
+      .from('announcements')
+      .select('mensaje')
+      .eq('activo', true)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .then(({ data }) => {
+        setAnnouncement(data?.[0]?.mensaje ?? null)
+        setLoading(false)
+      })
+  }, [])
+
+  return { announcement, loading }
+}
