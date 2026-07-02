@@ -29,6 +29,8 @@ export default async function handler(req, res) {
   const isAdmin = user.email === ADMIN_EMAIL || user.app_metadata?.role === 'admin'
   if (!isAdmin) return res.status(403).json({ error: 'Sin permisos de administrador' })
 
+  const isSuperAdmin = user.email === ADMIN_EMAIL
+
   const { action, ...payload } = req.body || {}
 
   // Lazy-init admin client — only fails here if SERVICE_KEY is missing
@@ -65,8 +67,9 @@ export default async function handler(req, res) {
       return res.json({ ok: true, email })
     }
 
-    // ── Crear admin / viewer ───────────────────────────────────────────────
+    // ── Crear admin / viewer (super admin only) ────────────────────────────
     if (action === 'create_admin') {
+      if (!isSuperAdmin) return res.status(403).json({ error: 'Solo el super admin puede crear accesos de administrador' })
       const { email, password } = payload
       if (!email || !password) return res.status(400).json({ error: 'Email y contraseña son obligatorios' })
       if (password.length < 6) return res.status(400).json({ error: 'Contraseña mínimo 6 caracteres' })
@@ -82,8 +85,9 @@ export default async function handler(req, res) {
       return res.json({ ok: true, email: created.user.email })
     }
 
-    // ── Listar usuarios ────────────────────────────────────────────────────
+    // ── Listar usuarios (super admin only) ────────────────────────────────
     if (action === 'list_users') {
+      if (!isSuperAdmin) return res.status(403).json({ error: 'Solo el super admin puede ver la lista de usuarios' })
       const all = []
       let page = 1
       while (true) {
@@ -96,8 +100,9 @@ export default async function handler(req, res) {
       return res.json({ ok: true, users: all })
     }
 
-    // ── Eliminar usuario ───────────────────────────────────────────────────
+    // ── Eliminar usuario (super admin only) ───────────────────────────────
     if (action === 'delete_user') {
+      if (!isSuperAdmin) return res.status(403).json({ error: 'Solo el super admin puede eliminar usuarios' })
       const { userId } = payload
       if (!userId) return res.status(400).json({ error: 'userId requerido' })
       // Protect main admin from deletion

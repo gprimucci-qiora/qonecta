@@ -1,7 +1,10 @@
 import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '../../lib/supabase'
+import { useAuth } from '../../hooks/useAuth'
 import { fetchAll } from '../../lib/db'
 import { formatWeekRange, getWeekStart } from '../../lib/bonos'
+
+const SUPER_ADMIN_EMAIL = 'g.primucci@qiora.com.mx'
 
 const CUADRILLAS = ['NORMAL', 'MOTO', 'HIBRIDA', 'ELITE', 'MULTIDISTRITO']
 
@@ -551,14 +554,19 @@ function TabUsuarios() {
 
 // ── Main ───────────────────────────────────────────────────────────────────────
 
-const TABS = [
-  { id: 'datos',    label: 'Limpiar datos' },
-  { id: 'tecnico',  label: 'Crear técnico' },
-  { id: 'admin',    label: 'Crear acceso admin' },
-  { id: 'usuarios', label: 'Usuarios activos' },
-]
-
 export default function AdminGestion() {
+  const { user } = useAuth()
+  const isSuperAdmin = user?.email === SUPER_ADMIN_EMAIL
+
+  const TABS = [
+    { id: 'datos',    label: 'Limpiar datos' },
+    { id: 'tecnico',  label: 'Crear técnico' },
+    ...(isSuperAdmin ? [
+      { id: 'admin',    label: 'Crear acceso admin' },
+      { id: 'usuarios', label: 'Usuarios activos' },
+    ] : []),
+  ]
+
   const [tab, setTab] = useState('datos')
 
   return (
@@ -581,8 +589,8 @@ export default function AdminGestion() {
 
       {tab === 'datos'    && <TabDatos />}
       {tab === 'tecnico'  && <TabTecnico />}
-      {tab === 'admin'    && <TabAdmin />}
-      {tab === 'usuarios' && <TabUsuarios />}
+      {isSuperAdmin && tab === 'admin'    && <TabAdmin />}
+      {isSuperAdmin && tab === 'usuarios' && <TabUsuarios />}
     </div>
   )
 }
