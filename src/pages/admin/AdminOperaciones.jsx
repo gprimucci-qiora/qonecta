@@ -153,14 +153,34 @@ const axisProps = { tickLine: false, axisLine: false, tick: axisStyle }
 
 function ViewNacional({ orders, trendData, onDrillSucursal }) {
   const total = orders.length
-  const tecnicosSet = new Set(orders.map(o => o.usuario_ffm))
-  const activoCount = tecnicosSet.size
-  const avgOrdenes = activoCount > 0 ? (total / activoCount).toFixed(1) : '0'
+  const activoCount = new Set(orders.map(o => o.usuario_ffm)).size
+  const sucursalesActivas = new Set(orders.map(o => o.sucursal).filter(Boolean)).size
+
+  const diasPorTecnico = {}
+  orders.forEach(o => {
+    if (!diasPorTecnico[o.usuario_ffm]) diasPorTecnico[o.usuario_ffm] = new Set()
+    diasPorTecnico[o.usuario_ffm].add(o.fecha_termino)
+  })
+  const totalDiasWorked = Object.values(diasPorTecnico).reduce((s, d) => s + d.size, 0)
+  const avgDias = activoCount > 0 ? (totalDiasWorked / activoCount).toFixed(1) : '0'
+  const prodPromedio = totalDiasWorked > 0 ? (total / totalDiasWorked).toFixed(1) : '0'
+  const totalEstrellas = orders.reduce((s, o) => s + (o.estrellas || 0), 0)
+  const avgEstrellas = activoCount > 0 ? (totalEstrellas / activoCount).toFixed(1) : '0'
 
   const diaData = byDay(orders)
   const bestDay = [...diaData].sort((a, b) => b.count - a.count)[0]
   const servicioData = byField(orders, 'tipo_servicio').slice(0, 14)
-  const sucursalAll = byField(orders, 'sucursal')
+
+  const sucursalMapE = {}
+  orders.forEach(o => {
+    const s = o.sucursal || 'N/A'
+    if (!sucursalMapE[s]) sucursalMapE[s] = { count: 0, techs: new Set() }
+    sucursalMapE[s].count++
+    sucursalMapE[s].techs.add(o.usuario_ffm)
+  })
+  const sucursalAll = Object.entries(sucursalMapE)
+    .map(([name, d]) => ({ name, count: d.count, tecnicos: d.techs.size, avg: (d.count / d.techs.size).toFixed(1) }))
+    .sort((a, b) => b.count - a.count)
   const sucursalTop = sucursalAll
     .slice(0, 10)
     .map(s => ({ ...s, shortName: s.name.split(' ').slice(-2).join(' ') }))
@@ -169,12 +189,17 @@ function ViewNacional({ orders, trendData, onDrillSucursal }) {
 
   return (
     <>
-      {/* KPI row */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14, marginBottom: 20 }}>
+      {/* KPIs — fila 1 */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 14, marginBottom: 14 }}>
         <KpiCard label="Órdenes en la semana" value={total.toLocaleString()} color={C.blue} sub="órdenes de servicio" />
         <KpiCard label="Técnicos activos" value={activoCount} color={C.green} sub="con al menos 1 OS" />
-        <KpiCard label="Promedio OS / técnico" value={avgOrdenes} color={C.orange} sub="esta semana" />
-        <KpiCard label="Día más productivo" value={bestDay?.day || '—'} color={C.purple} sub={bestDay?.count ? `${bestDay.count} órdenes` : ''} />
+        <KpiCard label="Sucursales activas" value={sucursalesActivas} color={C.slate} sub="centros de trabajo" />
+      </div>
+      {/* KPIs — fila 2 */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 14, marginBottom: 20 }}>
+        <KpiCard label="Productividad promedio" value={prodPromedio} color={C.orange} sub="OS por día trabajado" />
+        <KpiCard label="Asistencia promedio" value={`${avgDias} / 6`} color={C.purple} sub="días trabajados por técnico" />
+        <KpiCard label="Promedio estrellas" value={avgEstrellas} color="#F59E0B" sub={`${totalEstrellas.toLocaleString()} estrellas totales`} />
       </div>
 
       {/* Row 1: tipo de servicio + tendencia */}
@@ -291,17 +316,19 @@ function ViewNacional({ orders, trendData, onDrillSucursal }) {
         </div>
         <table className="admin-table">
           <thead>
-            <tr><th>#</th><th>Sucursal</th><th>Órdenes</th><th>% del total</th></tr>
+            <tr><th>#</th><th>Sucursal</th><th>Órdenes</th><th>Técnicos</th><th>OS/técnico</th><th>% del total</th></tr>
           </thead>
           <tbody>
             {sucursalAll.map((row, i) => (
               <tr key={row.name} style={{ cursor: 'pointer' }} onClick={() => onDrillSucursal(row.name)}>
-                <td style={{ color: '#8E8E93', width: 32 }}>{i + 1}</td>
+                <td style={{ color: i < 3 ? C.orange : '#8E8E93', fontWeight: i < 3 ? 700 : 400, width: 32 }}>{i + 1}</td>
                 <td style={{ fontWeight: 500 }}>{row.name}</td>
                 <td style={{ fontWeight: 700 }}>{row.count.toLocaleString()}</td>
+                <td style={{ color: C.green, fontWeight: 600 }}>{row.tecnicos}</td>
+                <td style={{ color: C.orange, fontWeight: 600 }}>{row.avg}</td>
                 <td>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <div style={{ flex: 1, height: 5, background: '#E5E5EA', borderRadius: 999, maxWidth: 140 }}>
+                    <div style={{ flex: 1, height: 5, background: '#E5E5EA', borderRadius: 999, maxWidth: 120 }}>
                       <div style={{ height: '100%', width: `${(row.count / total * 100).toFixed(0)}%`, background: C.blue, borderRadius: 999 }} />
                     </div>
                     <span style={{ fontSize: 12, color: '#8E8E93', minWidth: 40, textAlign: 'right' }}>
@@ -321,9 +348,27 @@ function ViewNacional({ orders, trendData, onDrillSucursal }) {
 // ─── Vista Sucursal ───────────────────────────────────────────────────────────
 
 function ViewSucursal({ orders, sucursal, profileMap, onDrillTecnico }) {
+  const [sortKey, setSortKey] = useState('ordenes')
+  const [sortDir, setSortDir] = useState('desc')
+
+  function toggleSort(key) {
+    if (sortKey === key) setSortDir(d => d === 'desc' ? 'asc' : 'desc')
+    else { setSortKey(key); setSortDir('desc') }
+  }
+
   const total = orders.length
   const activoCount = new Set(orders.map(o => o.usuario_ffm)).size
-  const avgOrdenes = activoCount > 0 ? (total / activoCount).toFixed(1) : '0'
+
+  const diasPorTecnico = {}
+  orders.forEach(o => {
+    if (!diasPorTecnico[o.usuario_ffm]) diasPorTecnico[o.usuario_ffm] = new Set()
+    diasPorTecnico[o.usuario_ffm].add(o.fecha_termino)
+  })
+  const totalDiasWorked = Object.values(diasPorTecnico).reduce((s, d) => s + d.size, 0)
+  const avgDias = activoCount > 0 ? (totalDiasWorked / activoCount).toFixed(1) : '0'
+  const prodPromedio = totalDiasWorked > 0 ? (total / totalDiasWorked).toFixed(1) : '0'
+  const totalEstrellas = orders.reduce((s, o) => s + (o.estrellas || 0), 0)
+  const avgEstrellas = activoCount > 0 ? (totalEstrellas / activoCount).toFixed(1) : '0'
 
   const diaData = byDay(orders)
   const bestDay = [...diaData].sort((a, b) => b.count - a.count)[0]
@@ -334,22 +379,55 @@ function ViewSucursal({ orders, sucursal, profileMap, onDrillTecnico }) {
   orders.forEach(o => {
     if (!techMap[o.usuario_ffm]) {
       const p = profileMap[o.usuario_ffm] || {}
-      techMap[o.usuario_ffm] = { ffm: o.usuario_ffm, nombre: p.nombre || o.usuario_ffm, cuadrilla: o.tipo_cuadrilla, ordenes: 0, estrellas: 0 }
+      techMap[o.usuario_ffm] = {
+        ffm: o.usuario_ffm, nombre: p.nombre || o.usuario_ffm,
+        cuadrilla: o.tipo_cuadrilla, meta: p.meta_estrellas || 0,
+        ordenes: 0, estrellas: 0, _dias: new Set(),
+      }
     }
     techMap[o.usuario_ffm].ordenes++
-    techMap[o.usuario_ffm].estrellas += o.estrellas
+    techMap[o.usuario_ffm].estrellas += (o.estrellas || 0)
+    techMap[o.usuario_ffm]._dias.add(o.fecha_termino)
   })
-  const topTecnicos = Object.values(techMap).sort((a, b) => b.ordenes - a.ordenes)
+  const tecnicosList = Object.values(techMap).map(t => ({
+    ...t,
+    dias: t._dias.size,
+    osDia: t._dias.size > 0 ? parseFloat((t.ordenes / t._dias.size).toFixed(1)) : 0,
+    metaPct: t.meta > 0 ? Math.round(t.estrellas / t.meta * 100) : null,
+  }))
+
+  const sortedTecnicos = [...tecnicosList].sort((a, b) => {
+    const va = a[sortKey], vb = b[sortKey]
+    if (va == null && vb == null) return 0
+    if (va == null) return 1
+    if (vb == null) return -1
+    const na = parseFloat(va), nb = parseFloat(vb)
+    if (!isNaN(na) && !isNaN(nb)) return sortDir === 'desc' ? nb - na : na - nb
+    return sortDir === 'desc' ? String(vb).localeCompare(String(va)) : String(va).localeCompare(String(vb))
+  })
+
+  const SortTh = ({ k, children }) => (
+    <th onClick={() => toggleSort(k)} style={{ cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap' }}>
+      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3 }}>
+        {children}
+        <span style={{ fontSize: 8, color: sortKey === k ? C.blue : '#CBD5E1' }}>
+          {sortKey === k ? (sortDir === 'desc' ? '▼' : '▲') : '⇅'}
+        </span>
+      </span>
+    </th>
+  )
 
   if (total === 0) return <EmptyState />
 
   return (
     <>
       {/* KPIs */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 14, marginBottom: 20 }}>
-        <KpiCard label="Órdenes en la semana" value={total.toLocaleString()} color={C.blue} />
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 14, marginBottom: 20 }}>
+        <KpiCard label="Órdenes" value={total.toLocaleString()} color={C.blue} />
         <KpiCard label="Técnicos activos" value={activoCount} color={C.green} />
-        <KpiCard label="Prom. OS / técnico" value={avgOrdenes} color={C.orange} />
+        <KpiCard label="Productividad prom." value={prodPromedio} color={C.orange} sub="OS / día trabajado" />
+        <KpiCard label="Asistencia prom." value={`${avgDias} / 6`} color={C.purple} sub="días / técnico" />
+        <KpiCard label="Prom. estrellas" value={avgEstrellas} color="#F59E0B" sub={`${totalEstrellas.toLocaleString()} totales`} />
       </div>
 
       {/* Row 1: por día + cuadrilla donut */}
@@ -423,15 +501,24 @@ function ViewSucursal({ orders, sucursal, profileMap, onDrillTecnico }) {
       {/* Tabla técnicos */}
       <div className="admin-card" style={{ padding: 0, overflow: 'hidden' }}>
         <div style={{ padding: '14px 20px', borderBottom: '1px solid #F2F2F7', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <span style={{ fontSize: 13, fontWeight: 700 }}>Técnicos — {topTecnicos.length} activos</span>
-          <span style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.6px', color: '#8E8E93' }}>haz clic para ver detalle individual</span>
+          <span style={{ fontSize: 13, fontWeight: 700 }}>Técnicos — {sortedTecnicos.length} activos</span>
+          <span style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.6px', color: '#8E8E93' }}>haz clic para ver detalle · columnas ordenables</span>
         </div>
         <table className="admin-table">
           <thead>
-            <tr><th>#</th><th>Nombre</th><th>Cuadrilla</th><th>Órdenes</th><th>⭐ Estrellas</th></tr>
+            <tr>
+              <th>#</th>
+              <SortTh k="nombre">Nombre</SortTh>
+              <th>Cuadrilla</th>
+              <SortTh k="ordenes">Órdenes</SortTh>
+              <SortTh k="dias">Días</SortTh>
+              <SortTh k="osDia">OS/día</SortTh>
+              <SortTh k="estrellas">Estrellas</SortTh>
+              <SortTh k="metaPct">% Meta</SortTh>
+            </tr>
           </thead>
           <tbody>
-            {topTecnicos.map((t, i) => (
+            {sortedTecnicos.map((t, i) => (
               <tr key={t.ffm} style={{ cursor: 'pointer' }} onClick={() => onDrillTecnico(t.ffm)}>
                 <td style={{ color: i < 3 ? C.orange : '#8E8E93', fontWeight: i < 3 ? 700 : 400, width: 32 }}>{i + 1}</td>
                 <td style={{ fontWeight: 500 }}>{t.nombre}</td>
@@ -445,7 +532,15 @@ function ViewSucursal({ orders, sucursal, profileMap, onDrillTecnico }) {
                   </span>
                 </td>
                 <td style={{ fontWeight: 700 }}>{t.ordenes}</td>
-                <td style={{ color: C.orange, fontWeight: 600 }}>{t.estrellas}</td>
+                <td style={{ color: '#475569' }}>{t.dias}</td>
+                <td style={{ color: C.orange, fontWeight: 600 }}>{t.osDia}</td>
+                <td style={{ color: '#F59E0B', fontWeight: 600 }}>{t.estrellas}</td>
+                <td style={{
+                  fontWeight: 700,
+                  color: t.metaPct === null ? '#CBD5E1' : t.metaPct >= 100 ? C.green : t.metaPct >= 80 ? C.orange : C.red,
+                }}>
+                  {t.metaPct === null ? '—' : `${t.metaPct}%`}
+                </td>
               </tr>
             ))}
           </tbody>
