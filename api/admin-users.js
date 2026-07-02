@@ -100,6 +100,17 @@ export default async function handler(req, res) {
       return res.json({ ok: true, users: all })
     }
 
+    // ── Cambiar contraseña ─────────────────────────────────────────────────
+    if (action === 'reset_password') {
+      if (!isSuperAdmin) return res.status(403).json({ error: 'Solo el super admin puede cambiar contraseñas' })
+      const { userId, password } = payload
+      if (!userId || !password) return res.status(400).json({ error: 'userId y password son obligatorios' })
+      if (password.length < 6) return res.status(400).json({ error: 'Contraseña mínimo 6 caracteres' })
+      const { error } = await admin.auth.admin.updateUserById(userId, { password })
+      if (error) return res.status(400).json({ error: error.message })
+      return res.json({ ok: true })
+    }
+
     // ── Eliminar usuario (super admin only) ───────────────────────────────
     if (action === 'delete_user') {
       if (!isSuperAdmin) return res.status(403).json({ error: 'Solo el super admin puede eliminar usuarios' })

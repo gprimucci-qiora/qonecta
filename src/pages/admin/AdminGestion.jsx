@@ -372,6 +372,67 @@ function TabAdmin() {
 
 const ADMIN_EMAIL = 'g.primucci@qiora.com.mx'
 
+function PwForm({ userId, onClose }) {
+  const [pw, setPw] = useState('')
+  const [confirm, setConfirm] = useState('')
+  const [msg, setMsg] = useState(null)
+  const [loading, setLoading] = useState(false)
+
+  async function submit(e) {
+    e.preventDefault()
+    if (pw !== confirm) { setMsg({ type: 'err', text: 'Las contraseñas no coinciden' }); return }
+    setLoading(true)
+    setMsg(null)
+    const data = await callAPI('reset_password', { userId, password: pw })
+    if (data.ok) {
+      setMsg({ type: 'ok', text: 'Contraseña actualizada' })
+      setPw(''); setConfirm('')
+      setTimeout(onClose, 1200)
+    } else {
+      setMsg({ type: 'err', text: data.error })
+    }
+    setLoading(false)
+  }
+
+  return (
+    <tr>
+      <td colSpan={5} style={{ background: '#F9F9FB', padding: '12px 20px', borderBottom: '1px solid #E5E5EA' }}>
+        <form onSubmit={submit} style={{ display: 'flex', gap: 10, alignItems: 'flex-end', flexWrap: 'wrap' }}>
+          <div>
+            <div style={{ fontSize: 11, fontWeight: 600, color: '#555', marginBottom: 4 }}>Nueva contraseña</div>
+            <input
+              type="password" required minLength={6} value={pw}
+              onChange={e => setPw(e.target.value)}
+              placeholder="Mínimo 6 caracteres"
+              style={{ ...S.input, width: 200 }}
+            />
+          </div>
+          <div>
+            <div style={{ fontSize: 11, fontWeight: 600, color: '#555', marginBottom: 4 }}>Confirmar</div>
+            <input
+              type="password" required value={confirm}
+              onChange={e => setConfirm(e.target.value)}
+              placeholder="Repite la contraseña"
+              style={{ ...S.input, width: 200 }}
+            />
+          </div>
+          <button type="submit" disabled={loading} style={{ ...S.btn('primary'), padding: '8px 18px', fontSize: 13, opacity: loading ? 0.6 : 1 }}>
+            {loading ? 'Guardando...' : 'Guardar'}
+          </button>
+          <button type="button" onClick={onClose} style={{ padding: '8px 14px', background: 'none', border: '1px solid #E5E5EA', borderRadius: 8, fontSize: 13, cursor: 'pointer', color: '#555' }}>
+            Cancelar
+          </button>
+          {msg && (
+            <span style={{ fontSize: 13, color: msg.type === 'ok' ? '#1a7f3c' : '#FF3B30', fontWeight: 600, alignSelf: 'center' }}>
+              {msg.text}
+            </span>
+          )}
+        </form>
+      </td>
+    </tr>
+  )
+}
+
 function TabUsuarios() {
   const [users, setUsers] = useState([])
   const [profiles, setProfiles] = useState({})
@@ -379,6 +440,7 @@ function TabUsuarios() {
   const [error, setError] = useState(null)
   const [pending, setPending] = useState(null)   // userId to confirm-delete
   const [deleting, setDeleting] = useState(null)
+  const [changingPw, setChangingPw] = useState(null)  // userId with pw form open
   const [search, setSearch] = useState('')
 
   const load = useCallback(async () => {
@@ -393,7 +455,6 @@ function TabUsuarios() {
     const data = await res.json()
     if (!data.ok) { setError(data.error); setLoading(false); return }
 
-    // Also load profiles to show FFM + name for técnicos
     const profs = await fetchAll((from, to) =>
       supabase.from('profiles').select('id, usuario_ffm, nombre').range(from, to)
     )
@@ -481,6 +542,7 @@ function TabUsuarios() {
               const isMainAdmin = u.email === ADMIN_EMAIL
               const isBusy = deleting !== null
               return (
+                <>
                 <tr key={u.id}>
                   <td style={{ fontFamily: 'monospace', fontSize: 12 }}>
                     {prof?.usuario_ffm
@@ -502,44 +564,63 @@ function TabUsuarios() {
                   <td style={{ color: '#8E8E93', fontSize: 12 }}>
                     {new Date(u.created_at).toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: 'numeric' })}
                   </td>
-                  <td style={{ width: 140, textAlign: 'right', paddingRight: 16 }}>
-                    {!isMainAdmin && (
-                      pending === u.id ? (
-                        <span style={{ display: 'inline-flex', gap: 6 }}>
-                          <button
-                            onClick={() => deleteUser(u.id)}
-                            disabled={isBusy}
-                            style={{
-                              padding: '4px 10px', background: '#FF3B30', color: '#fff',
-                              border: 'none', borderRadius: 6, fontSize: 12, fontWeight: 700,
-                              cursor: 'pointer', opacity: isBusy ? 0.5 : 1,
-                            }}
-                          >
-                            {deleting === u.id ? '...' : 'Confirmar'}
-                          </button>
-                          <button
-                            onClick={() => setPending(null)}
-                            style={{ padding: '4px 10px', background: 'none', border: '1px solid #E5E5EA', borderRadius: 6, fontSize: 12, cursor: 'pointer', color: '#555' }}
-                          >
-                            Cancelar
-                          </button>
-                        </span>
-                      ) : (
-                        <button
-                          onClick={() => setPending(u.id)}
-                          disabled={isBusy}
-                          style={{
-                            padding: '4px 12px', background: 'none', border: '1px solid #FF3B30',
-                            color: '#FF3B30', borderRadius: 6, fontSize: 12, fontWeight: 600,
-                            cursor: 'pointer', opacity: isBusy ? 0.5 : 1,
-                          }}
-                        >
-                          Eliminar
-                        </button>
-                      )
-                    )}
+                  <td style={{ textAlign: 'right', paddingRight: 16 }}>
+                    <div style={{ display: 'inline-flex', gap: 6, alignItems: 'center' }}>
+                      {/* Change password button — always visible */}
+                      <button
+                        onClick={() => { setChangingPw(changingPw === u.id ? null : u.id); setPending(null) }}
+                        style={{
+                          padding: '4px 10px', background: 'none',
+                          border: '1px solid #00B2E3', color: '#00B2E3',
+                          borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: 'pointer',
+                        }}
+                      >
+                        {changingPw === u.id ? 'Cerrar' : 'Cambiar clave'}
+                      </button>
+
+                      {/* Delete — only for non-super-admin */}
+                      {!isMainAdmin && (
+                        pending === u.id ? (
+                          <span style={{ display: 'inline-flex', gap: 6 }}>
+                            <button
+                              onClick={() => deleteUser(u.id)}
+                              disabled={isBusy}
+                              style={{
+                                padding: '4px 10px', background: '#FF3B30', color: '#fff',
+                                border: 'none', borderRadius: 6, fontSize: 12, fontWeight: 700,
+                                cursor: 'pointer', opacity: isBusy ? 0.5 : 1,
+                              }}
+                            >
+                              {deleting === u.id ? '...' : 'Confirmar'}
+                            </button>
+                            <button
+                              onClick={() => setPending(null)}
+                              style={{ padding: '4px 10px', background: 'none', border: '1px solid #E5E5EA', borderRadius: 6, fontSize: 12, cursor: 'pointer', color: '#555' }}
+                            >
+                              Cancelar
+                            </button>
+                          </span>
+                        ) : (
+                            <button
+                              onClick={() => { setPending(u.id); setChangingPw(null) }}
+                              disabled={isBusy}
+                              style={{
+                                padding: '4px 12px', background: 'none', border: '1px solid #FF3B30',
+                                color: '#FF3B30', borderRadius: 6, fontSize: 12, fontWeight: 600,
+                                cursor: 'pointer', opacity: isBusy ? 0.5 : 1,
+                              }}
+                            >
+                              Eliminar
+                            </button>
+                          )
+                        )}
+                      </div>
                   </td>
                 </tr>
+                {changingPw === u.id && (
+                  <PwForm key={`pw-${u.id}`} userId={u.id} onClose={() => setChangingPw(null)} />
+                )}
+                </>
               )
             })}
             {filtered.length === 0 && (
