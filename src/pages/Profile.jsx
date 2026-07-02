@@ -15,10 +15,16 @@ export default function Profile() {
 
   if (loading) return <div className="loading-screen"><span>Cargando...</span></div>
   if (profileError) return (
-    <div className="loading-screen">
+    <div className="loading-screen" style={{ flexDirection: 'column', gap: 20 }}>
       <span style={{ color: 'var(--color-text-sec)', fontSize: 14, textAlign: 'center', padding: '0 32px' }}>
         No se pudo cargar tu perfil. Verifica tu conexión e intenta de nuevo.
       </span>
+      <button
+        onClick={handleSignOut}
+        style={{ padding: '10px 24px', background: '#1C1C1E', color: '#fff', border: 'none', borderRadius: 10, fontSize: 14, fontWeight: 600, cursor: 'pointer' }}
+      >
+        Cerrar sesión
+      </button>
     </div>
   )
   if (!profile) return null

@@ -26,6 +26,7 @@ function AppShell() {
   const { user, loading } = useAuth()
   if (loading) return <div className="loading-screen"><span>Cargando...</span></div>
   if (!user) return <Navigate to="/login" replace />
+  if (isAdmin(user)) return <Navigate to="/admin" replace />
   return (
     <div className="app-shell">
       <header className="app-header">

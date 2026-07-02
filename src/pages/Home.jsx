@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useProfile } from '../hooks/useProfile'
+import { useAuth } from '../hooks/useAuth'
 import { useCurrentWeekOrders, useAnnouncement } from '../hooks/useOrders'
 import { calcAlcance, getNivel, formatWeekRange, getWeekStart } from '../lib/bonos'
 import Avatar from '../components/Avatar'
@@ -12,6 +13,7 @@ const DAY_LABELS = ['LUN', 'MAR', 'MIÉ', 'JUE', 'VIE', 'SÁB', 'DOM']
 
 export default function Home() {
   const navigate = useNavigate()
+  const { signOut } = useAuth()
   const { profile, loading: profileLoading, error: profileError } = useProfile()
   const { orders, totalEstrellas, loading: ordersLoading } = useCurrentWeekOrders()
   const { announcement } = useAnnouncement()
@@ -29,10 +31,16 @@ export default function Home() {
 
   if (profileLoading) return <div className="loading-screen"><span>Cargando...</span></div>
   if (profileError) return (
-    <div className="loading-screen">
+    <div className="loading-screen" style={{ flexDirection: 'column', gap: 20 }}>
       <span style={{ color: '#888', fontSize: 14, textAlign: 'center', padding: '0 32px' }}>
         No se pudo cargar tu perfil. Verifica tu conexión e intenta de nuevo.
       </span>
+      <button
+        onClick={async () => { await signOut(); navigate('/login', { replace: true }) }}
+        style={{ padding: '10px 24px', background: '#1C1C1E', color: '#fff', border: 'none', borderRadius: 10, fontSize: 14, fontWeight: 600, cursor: 'pointer' }}
+      >
+        Cerrar sesión
+      </button>
     </div>
   )
   if (!profile) return null
