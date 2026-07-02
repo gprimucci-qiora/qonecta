@@ -23,24 +23,24 @@ import {
 // ─── Design tokens ────────────────────────────────────────────────────────────
 
 const C = {
-  blue:   '#00B2E3',
-  green:  '#30D158',
-  orange: '#FF9F0A',
-  purple: '#BF5AF2',
-  red:    '#FF453A',
-  yellow: '#FFD60A',
-  teal:   '#4ECDC4',
-  pink:   '#FF6B6B',
-  indigo: '#5B5BD6',
-  lime:   '#96CEB4',
+  blue:    '#00B2E3',
+  blueDark:'#006F8E',
+  green:   '#30D158',
+  orange:  '#FF9F0A',
+  purple:  '#BF5AF2',
+  red:     '#FF453A',
+  slate:   '#1E293B',
+  muted:   '#CBD5E1',
+  surface: '#F8FAFC',
 }
 
-// 12-color spectrum for service types (reads well on white)
-const SPECTRUM = [
-  '#4472C4','#ED7D31','#70AD47','#FFC000',
-  '#5B9BD5','#A5A5A5','#FF0000','#7030A0',
-  '#00B0F0','#4ECDC4','#FF6B6B','#96CEB4',
+// Professional blue gradient — dark → light for ranked data
+const BLUE_SCALE = [
+  '#003F5C','#005F8A','#0078AD','#0090CC','#00A8E8',
+  '#1FB8F0','#52C8F5','#7DD5F7','#A8E2FA','#C8EDFC',
 ]
+
+function rankColor(i) { return BLUE_SCALE[Math.min(i, BLUE_SCALE.length - 1)] }
 
 const CUAD_COLORS = {
   NORMAL: C.blue, MOTO: C.orange, HIBRIDA: C.green,
@@ -73,27 +73,42 @@ function byField(orders, field) {
 
 // ─── Shared UI ────────────────────────────────────────────────────────────────
 
-function KpiCard({ label, value, sub, color, icon }) {
+function KpiCard({ label, value, sub, color }) {
   return (
-    <div className="admin-card" style={{ padding: '18px 20px', borderTop: `3px solid ${color || '#E5E5EA'}` }}>
-      <div style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.6px', color: '#8E8E93', marginBottom: 8 }}>
-        {icon && <span style={{ marginRight: 5 }}>{icon}</span>}{label}
+    <div style={{
+      background: '#fff',
+      border: '1px solid #E8EEF4',
+      borderRadius: 12,
+      padding: '16px 20px',
+      borderLeft: `4px solid ${color || '#E5E5EA'}`,
+      boxShadow: '0 1px 4px rgba(0,0,0,.05)',
+    }}>
+      <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.7px', color: '#94A3B8', marginBottom: 10 }}>
+        {label}
       </div>
-      <div style={{ fontSize: 30, fontWeight: 800, color: color || '#1C1C1E', lineHeight: 1 }}>{value}</div>
-      {sub && <div style={{ fontSize: 11, color: '#8E8E93', marginTop: 4 }}>{sub}</div>}
+      <div style={{ fontSize: 28, fontWeight: 800, color: C.slate, lineHeight: 1, letterSpacing: '-0.5px' }}>{value}</div>
+      {sub && <div style={{ fontSize: 12, color: '#94A3B8', marginTop: 6 }}>{sub}</div>}
     </div>
   )
 }
 
 function ChartCard({ title, badge, children, style }) {
   return (
-    <div className="admin-card" style={style}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-        <div style={{ fontSize: 13, fontWeight: 700, color: '#1C1C1E' }}>{title}</div>
+    <div style={{
+      background: '#fff',
+      border: '1px solid #E8EEF4',
+      borderRadius: 12,
+      padding: '20px 20px 16px',
+      boxShadow: '0 1px 4px rgba(0,0,0,.05)',
+      ...style,
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 }}>
+        <div style={{ fontSize: 13, fontWeight: 700, color: C.slate, letterSpacing: '-0.1px' }}>{title}</div>
         {badge && (
           <span style={{
-            fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.6px',
-            padding: '3px 8px', borderRadius: 4, background: '#F0F0F0', color: '#8E8E93',
+            fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '.8px',
+            padding: '3px 8px', borderRadius: 4,
+            background: C.blue + '14', color: C.blue,
           }}>{badge}</span>
         )}
       </div>
@@ -105,23 +120,33 @@ function ChartCard({ title, badge, children, style }) {
 function Tip({ active, payload, label, extra }) {
   if (!active || !payload?.length) return null
   return (
-    <div style={{ background: '#fff', border: '1px solid #E5E5EA', borderRadius: 8, padding: '10px 14px', fontSize: 12, boxShadow: '0 4px 12px rgba(0,0,0,.1)' }}>
-      {label && <div style={{ fontWeight: 700, marginBottom: 4, color: '#1C1C1E' }}>{label}</div>}
+    <div style={{
+      background: '#fff', border: '1px solid #E2EAF0',
+      borderRadius: 10, padding: '10px 14px', fontSize: 12,
+      boxShadow: '0 8px 24px rgba(0,0,0,.12)',
+    }}>
+      {label && <div style={{ fontWeight: 700, marginBottom: 6, color: C.slate, fontSize: 13 }}>{label}</div>}
       {payload.map((p, i) => (
-        <div key={i} style={{ color: p.color || '#555', marginBottom: 1 }}>
-          <span style={{ marginRight: 6 }}>●</span>{p.name || ''}: <strong>{p.value?.toLocaleString()}</strong>
+        <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#475569', marginBottom: 2 }}>
+          <span style={{ width: 8, height: 8, borderRadius: '50%', background: p.color, flexShrink: 0, display: 'inline-block' }} />
+          {p.name && <span>{p.name}:</span>} <strong style={{ color: C.slate }}>{p.value?.toLocaleString()}</strong>
         </div>
       ))}
-      {extra && <div style={{ color: '#8E8E93', fontSize: 11, marginTop: 4 }}>{extra}</div>}
+      {extra && <div style={{ color: '#94A3B8', fontSize: 11, marginTop: 6, borderTop: '1px solid #F0F0F0', paddingTop: 6 }}>{extra}</div>}
     </div>
   )
 }
 
 function EmptyState({ text = 'Sin datos para esta semana' }) {
-  return <div style={{ padding: '52px 24px', textAlign: 'center', color: '#8E8E93', fontSize: 14 }}>{text}</div>
+  return (
+    <div style={{ padding: '52px 24px', textAlign: 'center', color: '#94A3B8', fontSize: 13 }}>
+      <div style={{ fontSize: 32, marginBottom: 12, opacity: 0.3 }}>📊</div>
+      {text}
+    </div>
+  )
 }
 
-const axisStyle = { fontSize: 11, fill: '#8E8E93' }
+const axisStyle = { fontSize: 11, fill: '#94A3B8' }
 const axisProps = { tickLine: false, axisLine: false, tick: axisStyle }
 
 // ─── Vista Nacional ───────────────────────────────────────────────────────────
@@ -146,63 +171,55 @@ function ViewNacional({ orders, trendData, onDrillSucursal }) {
     <>
       {/* KPI row */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14, marginBottom: 20 }}>
-        <KpiCard icon="📋" label="Órdenes en la semana" value={total.toLocaleString()} color={C.blue} sub="órdenes de servicio" />
-        <KpiCard icon="👥" label="Técnicos activos" value={activoCount} color={C.green} sub="con al menos 1 OS" />
-        <KpiCard icon="⚡" label="Promedio OS / técnico" value={avgOrdenes} color={C.orange} sub="esta semana" />
-        <KpiCard icon="📅" label="Día más productivo" value={bestDay?.day || '—'} color={C.purple} sub={bestDay?.count ? `${bestDay.count} órdenes` : ''} />
+        <KpiCard label="Órdenes en la semana" value={total.toLocaleString()} color={C.blue} sub="órdenes de servicio" />
+        <KpiCard label="Técnicos activos" value={activoCount} color={C.green} sub="con al menos 1 OS" />
+        <KpiCard label="Promedio OS / técnico" value={avgOrdenes} color={C.orange} sub="esta semana" />
+        <KpiCard label="Día más productivo" value={bestDay?.day || '—'} color={C.purple} sub={bestDay?.count ? `${bestDay.count} órdenes` : ''} />
       </div>
 
-      {/* Row 1: distribución tipo servicio (grande, like SistemaBonos) + combo chart tendencia */}
+      {/* Row 1: tipo de servicio + tendencia */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 14 }}>
 
-        <ChartCard title="Distribución por Tipo de Servicio" badge="OPERATIVO">
-          <ResponsiveContainer width="100%" height={360}>
-            <BarChart
-              layout="vertical"
-              data={servicioData}
-              margin={{ top: 0, right: 60, left: 8, bottom: 0 }}
-            >
-              <CartesianGrid strokeDasharray="3 3" stroke="#F0F0F0" horizontal={false} />
-              <XAxis type="number" {...axisProps} />
-              <YAxis type="category" dataKey="name" width={160} {...axisProps} tick={{ fontSize: 11, fill: '#444' }} />
+        <ChartCard title="Tipo de servicio" badge="SEMANA ACTUAL">
+          <ResponsiveContainer width="100%" height={370}>
+            <BarChart layout="vertical" data={servicioData} margin={{ top: 0, right: 64, left: 4, bottom: 0 }}>
+              <XAxis type="number" {...axisProps} tick={{ fontSize: 10, fill: '#B0BAC9' }} />
+              <YAxis type="category" dataKey="name" width={162} {...axisProps}
+                tick={{ fontSize: 11, fill: '#475569', fontWeight: 500 }} />
               <Tooltip content={({ active, payload, label }) => (
-                <Tip active={active} payload={payload} label={label} />
-              )} />
-              <Bar dataKey="count" name="Órdenes" radius={[0, 4, 4, 0]} maxBarSize={22}>
-                {servicioData.map((_, i) => <Cell key={i} fill={SPECTRUM[i % SPECTRUM.length]} />)}
-                <LabelList
-                  dataKey="count"
-                  position="right"
-                  formatter={v => v.toLocaleString()}
-                  style={{ fontSize: 11, fill: '#555', fontWeight: 600 }}
-                />
+                <Tip active={active} payload={[{ ...payload?.[0], name: 'Órdenes', color: payload?.[0]?.fill }]} label={label} />
+              )} cursor={{ fill: 'rgba(0,178,227,0.05)' }} />
+              <Bar dataKey="count" name="Órdenes" radius={[0, 5, 5, 0]} maxBarSize={20}>
+                {servicioData.map((_, i) => <Cell key={i} fill={rankColor(i)} />)}
+                <LabelList dataKey="count" position="right" formatter={v => v.toLocaleString()}
+                  style={{ fontSize: 11, fill: '#64748B', fontWeight: 700 }} />
               </Bar>
             </BarChart>
           </ResponsiveContainer>
         </ChartCard>
 
-        <ChartCard title="Órdenes realizadas & Técnicos activos" badge="ÚLTIMAS 8 SEMANAS">
+        <ChartCard title="Tendencia semanal" badge="ÚLTIMAS 8 SEMANAS">
           {trendData.length < 2 ? (
             <EmptyState text="Se necesitan al menos 2 semanas de datos" />
           ) : (
-            <ResponsiveContainer width="100%" height={360}>
+            <ResponsiveContainer width="100%" height={370}>
               <ComposedChart data={trendData} margin={{ top: 8, right: 48, left: -8, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#F0F0F0" />
-                <XAxis dataKey="label" {...axisProps} tick={{ fontSize: 10, fill: '#8E8E93' }} />
+                <CartesianGrid strokeDasharray="0" stroke="rgba(0,0,0,.05)" />
+                <XAxis dataKey="label" {...axisProps} tick={{ fontSize: 10, fill: '#B0BAC9' }} />
                 <YAxis yAxisId="left" {...axisProps} />
                 <YAxis yAxisId="right" orientation="right" {...axisProps} />
                 <Tooltip content={({ active, payload, label }) => (
                   <Tip active={active} payload={payload} label={label} />
-                )} />
-                <Legend
-                  iconType="circle" iconSize={8}
-                  formatter={v => <span style={{ fontSize: 12 }}>{v}</span>}
-                />
-                <Bar yAxisId="left" dataKey="ordenes" name="Órdenes" fill="#C5D9E8" radius={[3, 3, 0, 0]} maxBarSize={36} />
+                )} cursor={{ fill: 'rgba(0,178,227,0.05)' }} />
+                <Legend iconType="circle" iconSize={8}
+                  formatter={v => <span style={{ fontSize: 11, color: '#64748B' }}>{v}</span>} />
+                <Bar yAxisId="left" dataKey="ordenes" name="Órdenes" fill={C.blue + '30'}
+                  stroke={C.blue} strokeWidth={1}
+                  radius={[4, 4, 0, 0]} maxBarSize={40} />
                 <Line yAxisId="right" type="monotone" dataKey="tecnicos" name="Técnicos activos"
-                  stroke={C.blue} strokeWidth={2.5}
-                  dot={{ r: 4, fill: C.blue, strokeWidth: 0 }}
-                  activeDot={{ r: 6 }}
+                  stroke={C.slate} strokeWidth={2.5}
+                  dot={{ r: 4, fill: C.slate, strokeWidth: 0 }}
+                  activeDot={{ r: 6, fill: C.blue, strokeWidth: 2, stroke: '#fff' }}
                 />
               </ComposedChart>
             </ResponsiveContainer>
@@ -210,52 +227,56 @@ function ViewNacional({ orders, trendData, onDrillSucursal }) {
         </ChartCard>
       </div>
 
-      {/* Row 2: órdenes por día + sucursales clickeables */}
+      {/* Row 2: días + sucursales */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 14 }}>
 
-        <ChartCard title="Órdenes por día de la semana" badge="SEMANA ACTUAL">
+        <ChartCard title="Órdenes por día" badge="SEMANA ACTUAL">
           <ResponsiveContainer width="100%" height={240}>
-            <BarChart data={diaData} margin={{ top: 4, right: 8, left: -20, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#F0F0F0" vertical={false} />
+            <BarChart data={diaData} margin={{ top: 18, right: 8, left: -24, bottom: 0 }}>
               <XAxis dataKey="day" {...axisProps} />
-              <YAxis {...axisProps} />
+              <YAxis {...axisProps} hide />
               <Tooltip content={({ active, payload, label }) => (
-                <Tip active={active} payload={[{ ...payload?.[0], name: 'Órdenes' }]} label={label} />
-              )} />
-              <Bar dataKey="count" name="Órdenes" radius={[5, 5, 0, 0]} maxBarSize={52}>
+                <Tip active={active} payload={[{ ...payload?.[0], name: 'Órdenes', color: C.blue }]} label={label} />
+              )} cursor={{ fill: 'rgba(0,178,227,0.05)' }} />
+              <Bar dataKey="count" name="Órdenes" radius={[6, 6, 0, 0]} maxBarSize={56}>
                 {diaData.map((d, i) => (
-                  <Cell key={i} fill={d.day === bestDay?.day ? C.blue : '#C5D9E8'} />
+                  <Cell key={i} fill={d.day === bestDay?.day ? C.blue : C.muted} />
                 ))}
-                <LabelList dataKey="count" position="top" style={{ fontSize: 11, fill: '#555', fontWeight: 600 }} />
+                <LabelList dataKey="count" position="top"
+                  formatter={v => v > 0 ? v.toLocaleString() : ''}
+                  style={{ fontSize: 12, fill: '#475569', fontWeight: 700 }} />
               </Bar>
             </BarChart>
           </ResponsiveContainer>
         </ChartCard>
 
-        <ChartCard title="Órdenes por sucursal — haz clic para ver detalle" badge="TOP 10">
+        <ChartCard title="Top 10 sucursales" badge="HAZ CLIC PARA DETALLES">
           <ResponsiveContainer width="100%" height={240}>
             <BarChart
               layout="vertical"
               data={sucursalTop}
-              margin={{ top: 0, right: 60, left: 8, bottom: 0 }}
+              margin={{ top: 0, right: 56, left: 4, bottom: 0 }}
               onClick={e => { const n = e?.activePayload?.[0]?.payload?.name; if (n) onDrillSucursal(n) }}
               style={{ cursor: 'pointer' }}
             >
-              <CartesianGrid strokeDasharray="3 3" stroke="#F0F0F0" horizontal={false} />
-              <XAxis type="number" {...axisProps} />
-              <YAxis type="category" dataKey="shortName" width={110} {...axisProps} tick={{ fontSize: 11, fill: '#444' }} />
+              <XAxis type="number" {...axisProps} hide />
+              <YAxis type="category" dataKey="shortName" width={112} {...axisProps}
+                tick={{ fontSize: 11, fill: '#475569', fontWeight: 500 }} />
               <Tooltip content={({ active, payload }) => {
                 if (!active || !payload?.length) return null
                 const d = payload[0].payload
                 return (
-                  <div style={{ background: '#fff', border: '1px solid #E5E5EA', borderRadius: 8, padding: '10px 14px', fontSize: 12, boxShadow: '0 4px 12px rgba(0,0,0,.1)' }}>
-                    <div style={{ fontWeight: 700, marginBottom: 4 }}>{d.name}</div>
-                    <div>{d.count.toLocaleString()} órdenes · <span style={{ color: C.blue }}>clic para ver detalle →</span></div>
+                  <div style={{ background: '#fff', border: '1px solid #E2EAF0', borderRadius: 10, padding: '10px 14px', fontSize: 12, boxShadow: '0 8px 24px rgba(0,0,0,.12)' }}>
+                    <div style={{ fontWeight: 700, marginBottom: 4, color: C.slate }}>{d.name}</div>
+                    <div style={{ color: '#475569' }}>{d.count.toLocaleString()} órdenes</div>
+                    <div style={{ color: C.blue, fontSize: 11, marginTop: 4 }}>Ver detalle →</div>
                   </div>
                 )
-              }} />
-              <Bar dataKey="count" name="Órdenes" fill={C.blue} radius={[0, 4, 4, 0]} maxBarSize={20}>
-                <LabelList dataKey="count" position="right" formatter={v => v.toLocaleString()} style={{ fontSize: 11, fill: '#555', fontWeight: 600 }} />
+              }} cursor={{ fill: 'rgba(0,178,227,0.05)' }} />
+              <Bar dataKey="count" name="Órdenes" radius={[0, 5, 5, 0]} maxBarSize={18}>
+                {sucursalTop.map((_, i) => <Cell key={i} fill={i === 0 ? C.blueDark : i < 3 ? C.blue : '#7EC8E3'} />)}
+                <LabelList dataKey="count" position="right" formatter={v => v.toLocaleString()}
+                  style={{ fontSize: 11, fill: '#64748B', fontWeight: 700 }} />
               </Bar>
             </BarChart>
           </ResponsiveContainer>
@@ -326,44 +347,54 @@ function ViewSucursal({ orders, sucursal, profileMap, onDrillTecnico }) {
     <>
       {/* KPIs */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 14, marginBottom: 20 }}>
-        <KpiCard icon="📋" label="Órdenes en la semana" value={total.toLocaleString()} color={C.blue} />
-        <KpiCard icon="👥" label="Técnicos activos" value={activoCount} color={C.green} />
-        <KpiCard icon="⚡" label="Prom. OS / técnico" value={avgOrdenes} color={C.orange} />
+        <KpiCard label="Órdenes en la semana" value={total.toLocaleString()} color={C.blue} />
+        <KpiCard label="Técnicos activos" value={activoCount} color={C.green} />
+        <KpiCard label="Prom. OS / técnico" value={avgOrdenes} color={C.orange} />
       </div>
 
       {/* Row 1: por día + cuadrilla donut */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 14 }}>
-        <ChartCard title="Órdenes por día de la semana" badge="SEMANA ACTUAL">
+        <ChartCard title="Órdenes por día" badge="SEMANA ACTUAL">
           <ResponsiveContainer width="100%" height={240}>
-            <BarChart data={diaData} margin={{ top: 4, right: 8, left: -20, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#F0F0F0" vertical={false} />
+            <BarChart data={diaData} margin={{ top: 18, right: 8, left: -24, bottom: 0 }}>
               <XAxis dataKey="day" {...axisProps} />
-              <YAxis {...axisProps} allowDecimals={false} />
+              <YAxis {...axisProps} hide />
               <Tooltip content={({ active, payload, label }) => (
-                <Tip active={active} payload={[{ ...payload?.[0], name: 'Órdenes' }]} label={label} />
-              )} />
-              <Bar dataKey="count" name="Órdenes" radius={[5, 5, 0, 0]} maxBarSize={52}>
+                <Tip active={active} payload={[{ ...payload?.[0], name: 'Órdenes', color: C.blue }]} label={label} />
+              )} cursor={{ fill: 'rgba(0,178,227,0.05)' }} />
+              <Bar dataKey="count" name="Órdenes" radius={[6, 6, 0, 0]} maxBarSize={56}>
                 {diaData.map((d, i) => (
-                  <Cell key={i} fill={d.day === bestDay?.day ? C.blue : '#C5D9E8'} />
+                  <Cell key={i} fill={d.day === bestDay?.day ? C.blue : C.muted} />
                 ))}
-                <LabelList dataKey="count" position="top" style={{ fontSize: 11, fill: '#555', fontWeight: 600 }} />
+                <LabelList dataKey="count" position="top"
+                  formatter={v => v > 0 ? v.toLocaleString() : ''}
+                  style={{ fontSize: 12, fill: '#475569', fontWeight: 700 }} />
               </Bar>
             </BarChart>
           </ResponsiveContainer>
         </ChartCard>
 
-        <ChartCard title="Distribución por tipo de cuadrilla">
+        <ChartCard title="Tipo de cuadrilla">
           <ResponsiveContainer width="100%" height={240}>
             <PieChart>
               <Pie data={cuadrillaData} dataKey="count" nameKey="name" cx="50%" cy="46%"
-                innerRadius={58} outerRadius={88} paddingAngle={2}>
+                innerRadius={58} outerRadius={88} paddingAngle={3}>
                 {cuadrillaData.map((e, i) => (
-                  <Cell key={i} fill={CUAD_COLORS[e.name] || SPECTRUM[i % SPECTRUM.length]} />
+                  <Cell key={i} fill={CUAD_COLORS[e.name] || rankColor(i)} />
                 ))}
               </Pie>
-              <Tooltip formatter={(v, n) => [`${v.toLocaleString()} órdenes`, n]} />
+              <Tooltip content={({ active, payload }) => {
+                if (!active || !payload?.length) return null
+                const d = payload[0]
+                return (
+                  <div style={{ background: '#fff', border: '1px solid #E2EAF0', borderRadius: 10, padding: '10px 14px', fontSize: 12, boxShadow: '0 8px 24px rgba(0,0,0,.12)' }}>
+                    <div style={{ fontWeight: 700, color: C.slate, marginBottom: 4 }}>{d.name}</div>
+                    <div style={{ color: '#475569' }}>{d.value?.toLocaleString()} órdenes</div>
+                  </div>
+                )
+              }} />
               <Legend iconType="circle" iconSize={8}
-                formatter={v => <span style={{ fontSize: 12 }}>{v}</span>}
+                formatter={v => <span style={{ fontSize: 11, color: '#64748B' }}>{v}</span>}
               />
             </PieChart>
           </ResponsiveContainer>
@@ -371,18 +402,19 @@ function ViewSucursal({ orders, sucursal, profileMap, onDrillTecnico }) {
       </div>
 
       {/* Por tipo de servicio */}
-      <ChartCard title="Distribución por Tipo de Servicio" badge="OPERATIVO" style={{ marginBottom: 14 }}>
-        <ResponsiveContainer width="100%" height={Math.max(200, servicioData.length * 32)}>
-          <BarChart layout="vertical" data={servicioData} margin={{ top: 0, right: 60, left: 8, bottom: 0 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#F0F0F0" horizontal={false} />
-            <XAxis type="number" {...axisProps} />
-            <YAxis type="category" dataKey="name" width={170} {...axisProps} tick={{ fontSize: 11, fill: '#444' }} />
+      <ChartCard title="Tipo de servicio" badge="OPERATIVO" style={{ marginBottom: 14 }}>
+        <ResponsiveContainer width="100%" height={Math.max(200, servicioData.length * 34)}>
+          <BarChart layout="vertical" data={servicioData} margin={{ top: 0, right: 64, left: 4, bottom: 0 }}>
+            <XAxis type="number" {...axisProps} tick={{ fontSize: 10, fill: '#B0BAC9' }} />
+            <YAxis type="category" dataKey="name" width={170} {...axisProps}
+              tick={{ fontSize: 11, fill: '#475569', fontWeight: 500 }} />
             <Tooltip content={({ active, payload, label }) => (
-              <Tip active={active} payload={payload} label={label} />
-            )} />
-            <Bar dataKey="count" name="Órdenes" radius={[0, 4, 4, 0]} maxBarSize={22}>
-              {servicioData.map((_, i) => <Cell key={i} fill={SPECTRUM[i % SPECTRUM.length]} />)}
-              <LabelList dataKey="count" position="right" formatter={v => v.toLocaleString()} style={{ fontSize: 11, fill: '#555', fontWeight: 600 }} />
+              <Tip active={active} payload={[{ ...payload?.[0], name: 'Órdenes', color: payload?.[0]?.fill }]} label={label} />
+            )} cursor={{ fill: 'rgba(0,178,227,0.05)' }} />
+            <Bar dataKey="count" name="Órdenes" radius={[0, 5, 5, 0]} maxBarSize={20}>
+              {servicioData.map((_, i) => <Cell key={i} fill={rankColor(i)} />)}
+              <LabelList dataKey="count" position="right" formatter={v => v.toLocaleString()}
+                style={{ fontSize: 11, fill: '#64748B', fontWeight: 700 }} />
             </Bar>
           </BarChart>
         </ResponsiveContainer>
@@ -476,45 +508,47 @@ function ViewTecnico({ orders, ffm, profileMap }) {
 
       {/* KPIs */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14, marginBottom: 20 }}>
-        <KpiCard icon="📋" label="Órdenes en la semana" value={total} color={C.blue} />
-        <KpiCard icon="⭐" label="Estrellas logradas" value={totalEstrellas} color={C.orange} sub={`meta ${p.meta_estrellas || '?'}`} />
-        <KpiCard icon="📅" label="Días trabajados" value={`${dias} / 6`} color={dias >= 5 ? C.green : dias >= 3 ? C.orange : C.red} />
-        <KpiCard icon="🎯" label="% Alcance meta" value={`${alcancePct.toFixed(1)}%`} color={alcanceColor} />
+        <KpiCard label="Órdenes en la semana" value={total} color={C.blue} />
+        <KpiCard label="Estrellas logradas" value={totalEstrellas} color={C.orange} sub={`meta ${p.meta_estrellas || '?'}`} />
+        <KpiCard label="Días trabajados" value={`${dias} / 6`} color={dias >= 5 ? C.green : dias >= 3 ? C.orange : C.red} />
+        <KpiCard label="% Alcance meta" value={`${alcancePct.toFixed(1)}%`} color={alcanceColor} />
       </div>
 
       {/* Gráficas */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 14 }}>
         <ChartCard title="Órdenes por día" badge="SEMANA ACTUAL">
           <ResponsiveContainer width="100%" height={220}>
-            <BarChart data={diaData} margin={{ top: 4, right: 8, left: -20, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#F0F0F0" vertical={false} />
+            <BarChart data={diaData} margin={{ top: 18, right: 8, left: -24, bottom: 0 }}>
               <XAxis dataKey="day" {...axisProps} />
-              <YAxis {...axisProps} allowDecimals={false} />
+              <YAxis {...axisProps} hide />
               <Tooltip content={({ active, payload, label }) => (
-                <Tip active={active} payload={[{ ...payload?.[0], name: 'Órdenes' }]} label={label} />
-              )} />
-              <Bar dataKey="count" name="Órdenes" radius={[5, 5, 0, 0]} maxBarSize={52}>
+                <Tip active={active} payload={[{ ...payload?.[0], name: 'Órdenes', color: C.green }]} label={label} />
+              )} cursor={{ fill: 'rgba(48,209,88,0.05)' }} />
+              <Bar dataKey="count" name="Órdenes" radius={[6, 6, 0, 0]} maxBarSize={56}>
                 {diaData.map((d, i) => (
-                  <Cell key={i} fill={d.day === bestDay?.day ? C.green : '#B7E5C4'} />
+                  <Cell key={i} fill={d.day === bestDay?.day ? C.green : C.muted} />
                 ))}
-                <LabelList dataKey="count" position="top" style={{ fontSize: 11, fill: '#555', fontWeight: 600 }} />
+                <LabelList dataKey="count" position="top"
+                  formatter={v => v > 0 ? v.toLocaleString() : ''}
+                  style={{ fontSize: 12, fill: '#475569', fontWeight: 700 }} />
               </Bar>
             </BarChart>
           </ResponsiveContainer>
         </ChartCard>
 
-        <ChartCard title="Distribución por Tipo de Servicio" badge="OPERATIVO">
+        <ChartCard title="Tipo de servicio" badge="OPERATIVO">
           <ResponsiveContainer width="100%" height={220}>
-            <BarChart layout="vertical" data={servicioData} margin={{ top: 0, right: 50, left: 8, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#F0F0F0" horizontal={false} />
-              <XAxis type="number" {...axisProps} allowDecimals={false} />
-              <YAxis type="category" dataKey="name" width={160} {...axisProps} tick={{ fontSize: 11, fill: '#444' }} />
+            <BarChart layout="vertical" data={servicioData} margin={{ top: 0, right: 56, left: 4, bottom: 0 }}>
+              <XAxis type="number" {...axisProps} tick={{ fontSize: 10, fill: '#B0BAC9' }} />
+              <YAxis type="category" dataKey="name" width={162} {...axisProps}
+                tick={{ fontSize: 11, fill: '#475569', fontWeight: 500 }} />
               <Tooltip content={({ active, payload, label }) => (
-                <Tip active={active} payload={payload} label={label} />
-              )} />
-              <Bar dataKey="count" name="Órdenes" radius={[0, 4, 4, 0]} maxBarSize={22}>
-                {servicioData.map((_, i) => <Cell key={i} fill={SPECTRUM[i % SPECTRUM.length]} />)}
-                <LabelList dataKey="count" position="right" style={{ fontSize: 11, fill: '#555', fontWeight: 600 }} />
+                <Tip active={active} payload={[{ ...payload?.[0], name: 'Órdenes', color: payload?.[0]?.fill }]} label={label} />
+              )} cursor={{ fill: 'rgba(0,178,227,0.05)' }} />
+              <Bar dataKey="count" name="Órdenes" radius={[0, 5, 5, 0]} maxBarSize={20}>
+                {servicioData.map((_, i) => <Cell key={i} fill={rankColor(i)} />)}
+                <LabelList dataKey="count" position="right"
+                  style={{ fontSize: 11, fill: '#64748B', fontWeight: 700 }} />
               </Bar>
             </BarChart>
           </ResponsiveContainer>
