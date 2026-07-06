@@ -124,6 +124,48 @@ export default async function handler(req, res) {
       return res.json({ ok: true })
     }
 
+    // ── Sincronizar técnicos sin cuenta ───────────────────────────────────
+    if (action === 'sync_tecnicos') {
+      const { ffms } = payload
+      if (!Array.isArray(ffms) || ffms.length === 0)
+        return res.status(400).json({ error: 'ffms debe ser un array no vacío' })
+
+      const results = { created: [], skipped: [], errors: [] }
+
+      for (const rawFfm of ffms) {
+        const ffm = rawFfm.trim().toUpperCase()
+        const email = `${ffm.toLowerCase()}@qiora.app`
+
+        const { data: created, error: cErr } = await admin.auth.admin.createUser({
+          email, password: 'prueba', email_confirm: true,
+        })
+
+        if (cErr) {
+          // Already registered → skip (they have an account)
+          if (cErr.message?.includes('already') || cErr.status === 422) {
+            results.skipped.push(ffm)
+          } else {
+            results.errors.push({ ffm, error: cErr.message })
+          }
+          continue
+        }
+
+        await admin.from('profiles').upsert({
+          id: created.user.id,
+          usuario_ffm: ffm,
+          nombre: ffm,
+          sucursal: '',
+          tipo_cuadrilla: 'NORMAL',
+          meta_estrellas: 0,
+          tipo_distrito: '',
+        }, { onConflict: 'usuario_ffm' })
+
+        results.created.push(ffm)
+      }
+
+      return res.json({ ok: true, ...results })
+    }
+
     return res.status(400).json({ error: 'Acción desconocida' })
   } catch (e) {
     return res.status(500).json({ error: e.message })
