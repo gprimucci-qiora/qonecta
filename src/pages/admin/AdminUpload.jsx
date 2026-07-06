@@ -2,6 +2,11 @@ import { useState, useCallback } from 'react'
 import * as XLSX from 'xlsx'
 import { supabase } from '../../lib/supabase'
 
+async function getToken() {
+  const { data: { session } } = await supabase.auth.getSession()
+  return session?.access_token
+}
+
 function getWeekStartFromDate(dateStr) {
   const d = new Date(dateStr + 'T12:00:00')
   const diff = d.getDay() === 0 ? -6 : 1 - d.getDay()
@@ -61,6 +66,7 @@ export default function AdminUpload() {
   const [file, setFile] = useState(null)
   const [rows, setRows] = useState(null)
   const [importing, setImporting] = useState(false)
+  const [importStatus, setImportStatus] = useState('')
   const [result, setResult] = useState(null)
   const [error, setError] = useState(null)
 
@@ -91,9 +97,10 @@ export default function AdminUpload() {
   async function handleImport() {
     if (!rows) return
     setImporting(true)
+    setImportStatus('')
     setError(null)
     try {
-      // Build profiles map
+      // Build profiles from Excel
       const profilesMap = {}
       rows.forEach(r => {
         profilesMap[r.usuario_ffm] = {
@@ -107,31 +114,54 @@ export default function AdminUpload() {
         }
       })
       const profiles = Object.values(profilesMap)
+      const allFfms = profiles.map(p => p.usuario_ffm)
 
-      // Get existing auth UUIDs from profiles table (already seeded)
+      // 1. Fetch existing profile IDs
+      setImportStatus('Leyendo perfiles existentes...')
       const { data: existingProfiles } = await supabase
-        .from('profiles')
-        .select('id, usuario_ffm')
-        .in('usuario_ffm', profiles.map(p => p.usuario_ffm))
+        .from('profiles').select('id, usuario_ffm').in('usuario_ffm', allFfms)
 
       const ffmToId = {}
       ;(existingProfiles ?? []).forEach(p => { ffmToId[p.usuario_ffm] = p.id })
 
-      // Upsert only profiles that already have an auth user
+      const newTechs = profiles.filter(p => !ffmToId[p.usuario_ffm])
+
+      // 2. Auto-create accounts for new techs (password: prueba)
+      let cuentasCreadas = 0
+      let cuentasErrores = 0
+      if (newTechs.length > 0) {
+        setImportStatus(`Creando ${newTechs.length} cuentas nuevas (contraseña: prueba)...`)
+        const token = await getToken()
+        const syncRes = await fetch('/api/admin-users', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ action: 'sync_tecnicos', ffms: newTechs.map(t => t.usuario_ffm) }),
+        })
+        const synced = await syncRes.json()
+        cuentasCreadas = synced.created?.length ?? 0
+        cuentasErrores = synced.errors?.length ?? 0
+
+        // Re-fetch IDs for newly created accounts
+        if (cuentasCreadas > 0) {
+          const { data: newProfiles } = await supabase
+            .from('profiles').select('id, usuario_ffm').in('usuario_ffm', synced.created)
+          ;(newProfiles ?? []).forEach(p => { ffmToId[p.usuario_ffm] = p.id })
+        }
+      }
+
+      // 3. Upsert full profiles for all techs with an account
+      setImportStatus('Actualizando perfiles...')
       const profilesWithId = profiles
         .filter(p => ffmToId[p.usuario_ffm])
         .map(p => ({ ...p, id: ffmToId[p.usuario_ffm] }))
 
-      const newTechs = profiles.filter(p => !ffmToId[p.usuario_ffm])
-
-      if (profilesWithId.length > 0) {
-        for (let i = 0; i < profilesWithId.length; i += 100) {
-          await supabase.from('profiles').upsert(profilesWithId.slice(i, i + 100), { onConflict: 'usuario_ffm' })
-        }
+      for (let i = 0; i < profilesWithId.length; i += 100) {
+        await supabase.from('profiles').upsert(profilesWithId.slice(i, i + 100), { onConflict: 'usuario_ffm' })
       }
 
-      // Delete orders for those dates, reinsert
+      // 4. Delete orders for those dates, reinsert for ALL techs with accounts
       const fechas = [...new Set(rows.map(r => r.fecha_termino))]
+      setImportStatus(`Insertando órdenes (${rows.length.toLocaleString()})...`)
       await supabase.from('orders').delete().in('fecha_termino', fechas)
 
       const orders = rows
@@ -155,7 +185,9 @@ export default function AdminUpload() {
       setResult({
         perfiles: profilesWithId.length,
         ordenes: orders.length,
-        nuevos: newTechs.length,
+        cuentasCreadas,
+        cuentasErrores,
+        sinCuenta: allFfms.filter(f => !ffmToId[f]).length,
         fechas: `${fechas.sort()[0]} → ${fechas.sort().slice(-1)[0]}`,
       })
       setRows(null)
@@ -164,6 +196,7 @@ export default function AdminUpload() {
       setError('Error importando: ' + e.message)
     }
     setImporting(false)
+    setImportStatus('')
   }
 
   // Preview stats
@@ -247,10 +280,10 @@ export default function AdminUpload() {
                 padding: '10px 28px', background: '#1C1C1E', color: '#fff',
                 border: 'none', borderRadius: 8, fontFamily: 'inherit',
                 fontSize: 14, fontWeight: 600, cursor: 'pointer',
-                opacity: importing ? 0.6 : 1,
+                opacity: importing ? 0.6 : 1, minWidth: 200,
               }}
             >
-              {importing ? 'Importando...' : 'Confirmar importación'}
+              {importing ? (importStatus || 'Importando...') : 'Confirmar importación'}
             </button>
             <button
               onClick={() => { setRows(null); setFile(null); setError(null) }}
@@ -274,11 +307,21 @@ export default function AdminUpload() {
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 8, fontSize: 14 }}>
             <div><span style={{ color: '#8E8E93' }}>Perfiles actualizados:</span> <strong>{result.perfiles}</strong></div>
-            <div><span style={{ color: '#8E8E93' }}>Órdenes insertadas:</span> <strong>{result.ordenes}</strong></div>
+            <div><span style={{ color: '#8E8E93' }}>Órdenes insertadas:</span> <strong>{result.ordenes.toLocaleString()}</strong></div>
             <div><span style={{ color: '#8E8E93' }}>Fechas:</span> <strong>{result.fechas}</strong></div>
-            {result.nuevos > 0 && (
+            {result.cuentasCreadas > 0 && (
+              <div style={{ color: '#3F873F' }}>
+                ✓ {result.cuentasCreadas} cuentas nuevas creadas (contraseña: <strong>prueba</strong>)
+              </div>
+            )}
+            {result.sinCuenta > 0 && (
               <div style={{ color: '#FF9F0A' }}>
-                ⚠ {result.nuevos} técnicos nuevos sin cuenta Auth — usa el script Python para crearlas
+                ⚠ {result.sinCuenta} técnico{result.sinCuenta > 1 ? 's' : ''} sin cuenta — sus órdenes no se insertaron
+              </div>
+            )}
+            {result.cuentasErrores > 0 && (
+              <div style={{ color: '#FF3B30' }}>
+                {result.cuentasErrores} error{result.cuentasErrores > 1 ? 'es' : ''} al crear cuentas
               </div>
             )}
           </div>
@@ -301,7 +344,7 @@ export default function AdminUpload() {
           <strong style={{ color: '#1C1C1E' }}>Notas:</strong><br />
           • Acepta el archivo "BASE BONO DIARIO" tal como se descarga de SIVA<br />
           • Reemplaza las órdenes de las fechas del archivo (no afecta otras semanas)<br />
-          • Para técnicos nuevos que no existen en la app, usa el script Python para crear sus cuentas
+          • Técnicos nuevos sin cuenta se crean automáticamente con contraseña <strong style={{ color: '#1C1C1E' }}>prueba</strong>
         </div>
       </div>
     </div>
