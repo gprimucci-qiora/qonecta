@@ -26,6 +26,11 @@ export function useProfile() {
         }
         setLoading(false)
       })
+      .catch(err => {
+        console.error('Profile fetch failed:', err)
+        setError(err)
+        setLoading(false)
+      })
   }, [user])
 
   return { profile, loading, error }

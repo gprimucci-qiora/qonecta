@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useProfile } from '../hooks/useProfile'
 import { useAuth } from '../hooks/useAuth'
-import { useCurrentWeekOrders, useAnnouncement } from '../hooks/useOrders'
+import { useWeekOrders, useAnnouncement } from '../hooks/useOrders'
 import { calcAlcance, getNivel, formatWeekRange, getWeekStart } from '../lib/bonos'
 import Avatar from '../components/Avatar'
 import NivelBadge from '../components/NivelBadge'
@@ -11,23 +11,44 @@ import Gauge from '../components/Gauge'
 
 const DAY_LABELS = ['LUN', 'MAR', 'MIÉ', 'JUE', 'VIE', 'SÁB', 'DOM']
 
-export default function Home() {
-  const navigate = useNavigate()
-  const { signOut } = useAuth()
-  const { profile, loading: profileLoading, error: profileError } = useProfile()
-  const { orders, totalEstrellas, loading: ordersLoading } = useCurrentWeekOrders()
-  const { announcement } = useAnnouncement()
-
-  const weekStart = getWeekStart()
-  const tabDays = Array.from({ length: 7 }, (_, i) => {
+function weekDays(weekStart) {
+  return Array.from({ length: 7 }, (_, i) => {
     const d = new Date(weekStart + 'T12:00:00')
     d.setDate(d.getDate() + i)
     return d.toISOString().split('T')[0]
   })
+}
+
+export default function Home() {
+  const navigate = useNavigate()
+  const { signOut } = useAuth()
+  const { profile, loading: profileLoading, error: profileError } = useProfile()
+
+  const currentWeek = getWeekStart()
+  const [weekStart, setWeekStart] = useState(currentWeek)
+  const [selectedDay, setSelectedDay] = useState(() => {
+    const today = new Date().toISOString().split('T')[0]
+    const days = weekDays(currentWeek)
+    return days.includes(today) ? today : days[0]
+  })
+
+  const { orders, totalEstrellas, loading: ordersLoading } = useWeekOrders(weekStart)
+  const { announcement } = useAnnouncement()
+
+  const tabDays = weekDays(weekStart)
+
+  function goWeek(delta) {
+    const d = new Date(weekStart + 'T12:00:00')
+    d.setDate(d.getDate() + delta * 7)
+    const next = d.toISOString().split('T')[0]
+    if (next > currentWeek) return
+    setWeekStart(next)
+    const today = new Date().toISOString().split('T')[0]
+    const days = weekDays(next)
+    setSelectedDay(days.includes(today) ? today : days[0])
+  }
+
   const todayStr = new Date().toISOString().split('T')[0]
-  const [selectedDay, setSelectedDay] = useState(
-    tabDays.includes(todayStr) ? todayStr : tabDays[0]
-  )
 
   if (profileLoading) return <div className="loading-screen"><span>Cargando...</span></div>
   if (profileError) return (
@@ -57,21 +78,34 @@ export default function Home() {
     <div className="page">
 
       {/* 1. Welcome row */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '16px 0 8px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '16px 0 0' }}>
         <Avatar name={profile.nombre} size={44} />
         <div>
-          <div style={{ fontSize: 16, fontWeight: 700 }}>Hola, {profile.nombre.split(' ')[0]}</div>
+          <div style={{ fontSize: 16, fontWeight: 700 }}>Hola, {(profile.nombre || profile.usuario_ffm).split(' ')[0]}</div>
           <div style={{ fontSize: 13, color: 'var(--color-text-sec)' }}>
             {profile.sucursal} · {profile.tipo_cuadrilla}
           </div>
         </div>
       </div>
 
+      {/* Week navigator */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 0 8px' }}>
+        <button
+          onClick={() => goWeek(-1)}
+          style={{ background: 'none', border: 'none', fontSize: 22, color: 'var(--color-text-sec)', cursor: 'pointer', padding: '2px 10px', lineHeight: 1 }}
+        >‹</button>
+        <span style={{ fontSize: 13, fontWeight: 600, color: weekStart === currentWeek ? 'var(--color-text)' : 'var(--color-primary)' }}>
+          {weekStart === currentWeek ? `Semana actual · ${formatWeekRange(weekStart)}` : `Semana ${formatWeekRange(weekStart)}`}
+        </span>
+        <button
+          onClick={() => goWeek(1)}
+          disabled={weekStart >= currentWeek}
+          style={{ background: 'none', border: 'none', fontSize: 22, cursor: weekStart >= currentWeek ? 'default' : 'pointer', padding: '2px 10px', lineHeight: 1, color: weekStart >= currentWeek ? 'var(--color-border, #E5E5EA)' : 'var(--color-text-sec)' }}
+        >›</button>
+      </div>
+
       {/* 2. Gauge card */}
       <div className="card" style={{ textAlign: 'center', paddingTop: 16, paddingBottom: 16 }}>
-        <div style={{ fontSize: 12, color: 'var(--color-text-sec)', marginBottom: 4, letterSpacing: 0.3 }}>
-          Semana {formatWeekRange(weekStart)}
-        </div>
         <Gauge value={totalEstrellas} max={profile.meta_estrellas} />
         {/* Stats row below gauge */}
         <div style={{ marginTop: 4 }}>
