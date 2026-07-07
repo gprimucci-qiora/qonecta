@@ -82,6 +82,20 @@ export function useWeekOrders(weekStart) {
   return { orders, totalEstrellas: sumEstrellas(orders), loading }
 }
 
+export function useBonoBracket(tipoDistrito) {
+  const [bracket, setBracket] = useState(null)
+  useEffect(() => {
+    if (!tipoDistrito) return
+    supabase
+      .from('bono_brackets')
+      .select('monto_80, monto_90, monto_100')
+      .eq('tipo_distrito', tipoDistrito.toUpperCase())
+      .single()
+      .then(({ data }) => setBracket(data ?? null))
+  }, [tipoDistrito])
+  return bracket
+}
+
 export function useAnnouncement() {
   const [announcement, setAnnouncement] = useState(null)
   const [loading, setLoading] = useState(true)

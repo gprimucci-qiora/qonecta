@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useProfile } from '../hooks/useProfile'
 import { useAuth } from '../hooks/useAuth'
-import { useWeekOrders, useAnnouncement } from '../hooks/useOrders'
+import { useWeekOrders, useAnnouncement, useBonoBracket } from '../hooks/useOrders'
 import { calcAlcance, getNivel, formatWeekRange, getWeekStart } from '../lib/bonos'
 import Avatar from '../components/Avatar'
 import NivelBadge from '../components/NivelBadge'
@@ -19,50 +19,60 @@ function weekDays(weekStart) {
   })
 }
 
-function getBonusHint(totalEstrellas, meta, tipoDistrito) {
+function fmt(n) { return `$${Number(n).toLocaleString('es-MX')}` }
+
+function getBonusHint(totalEstrellas, meta, tipoDistrito, bracket) {
   if (!meta || meta === 0) return null
   const dist = (tipoDistrito || '').toUpperCase()
+  const alcancePct = (totalEstrellas / meta) * 100
 
-  if (dist === 'B') {
-    const completed = Math.floor(totalEstrellas / 6)
-    const bonoActual = Math.min(completed * 100, 500)
-    if (bonoActual >= 500) {
-      return { msg: '¡Bono adicional máximo de $500 alcanzado esta semana!', positive: true }
-    }
-    const nextAt = (completed + 1) * 6
-    const needed = nextAt - totalEstrellas
-    const bonoNext = Math.min((completed + 1) * 100, 500)
-    if (bonoActual > 0) {
-      return { msg: `Llevas $${bonoActual} de bono extra. Con ${needed} estrella${needed !== 1 ? 's' : ''} más sumas $${bonoNext}.`, positive: true }
-    }
-    return { msg: `Con ${needed} estrella${needed !== 1 ? 's' : ''} más completas 6 y sumas $100 de bono adicional.`, positive: false }
+  // Base tier progression (works for all district types)
+  if (alcancePct < 80) {
+    const needed = Math.ceil(meta * 0.8) - totalEstrellas
+    if (needed <= 0) return null
+    const suffix = bracket ? ` → cobras ${fmt(bracket.monto_80)}` : ''
+    return { msg: `${needed} estrella${needed !== 1 ? 's' : ''} más para llegar al 80%${suffix}.`, positive: false }
+  }
+  if (alcancePct < 90) {
+    const needed = Math.ceil(meta * 0.9) - totalEstrellas
+    const suffix = bracket ? ` → tu bono sube a ${fmt(bracket.monto_90)}` : ''
+    return { msg: `Con ${needed} estrella${needed !== 1 ? 's' : ''} más llegas al 90%${suffix}.`, positive: false }
+  }
+  if (alcancePct < 100) {
+    const needed = Math.ceil(meta) - totalEstrellas
+    const suffix = bracket ? ` → tu bono sube a ${fmt(bracket.monto_100)}` : ''
+    return { msg: `Con ${needed} estrella${needed !== 1 ? 's' : ''} más alcanzas el 100%${suffix}.`, positive: false }
   }
 
+  // At or above 100%
   if (dist === 'A') {
     const stars110 = Math.ceil(meta * 1.1)
     if (totalEstrellas >= stars110) {
-      return { msg: '¡110% alcanzado! +$500 de productividad asegurados.', positive: true }
+      const total = bracket ? ` (${fmt(bracket.monto_100 + 500)} total)` : ''
+      return { msg: `¡110% alcanzado! +$500 de productividad asegurados${total}.`, positive: true }
     }
     const needed = stars110 - totalEstrellas
-    return { msg: `${needed} estrella${needed !== 1 ? 's' : ''} más para llegar al 110% y ganar $500 adicionales.`, positive: false }
+    return { msg: `Con ${needed} estrella${needed !== 1 ? 's' : ''} más llegas al 110% y sumas $500 adicionales.`, positive: false }
   }
 
-  // Generic: show next tier progress
-  const alcancePct = (totalEstrellas / meta) * 100
-  if (alcancePct >= 100) {
-    return { msg: '¡100% completado! Tu bono completo está asegurado.', positive: true }
+  if (dist === 'B') {
+    const extra = Math.max(0, totalEstrellas - meta)
+    const completed = Math.floor(extra / 6)
+    const bonoAdicional = Math.min(completed * 100, 500)
+    if (bonoAdicional >= 500) {
+      const total = bracket ? ` (${fmt(bracket.monto_100 + 500)} total)` : ''
+      return { msg: `¡Bono adicional máximo de $500 alcanzado${total}!`, positive: true }
+    }
+    const nextGroupAt = (completed + 1) * 6 - extra
+    if (bonoAdicional > 0) {
+      return { msg: `Llevas $${bonoAdicional} de bono extra. Con ${nextGroupAt} estrella${nextGroupAt !== 1 ? 's' : ''} más sumas $100.`, positive: true }
+    }
+    return { msg: `Con ${nextGroupAt} estrella${nextGroupAt !== 1 ? 's' : ''} más sobre tu meta completas el primer grupo y sumas $100.`, positive: false }
   }
-  if (alcancePct >= 90) {
-    const needed = Math.ceil(meta) - totalEstrellas
-    return { msg: `Solo ${needed} estrella${needed !== 1 ? 's' : ''} más para completar el 100% de tu bono.`, positive: false }
-  }
-  if (alcancePct >= 80) {
-    const needed = Math.ceil(meta * 0.9) - totalEstrellas
-    return { msg: `Nivel 80% alcanzado. ${needed} estrella${needed !== 1 ? 's' : ''} más para el nivel 90%.`, positive: false }
-  }
-  const needed = Math.ceil(meta * 0.8) - totalEstrellas
-  if (needed <= 0) return null
-  return { msg: `${needed} estrella${needed !== 1 ? 's' : ''} más para alcanzar el primer nivel de bono (80%).`, positive: false }
+
+  // Generic at 100%
+  const celebrate = bracket ? `¡Meta al 100%! Tu bono esta semana es de ${fmt(bracket.monto_100)}.` : '¡Meta al 100%! Tu bono completo está asegurado.'
+  return { msg: celebrate, positive: true }
 }
 
 export default function Home() {
@@ -81,6 +91,7 @@ export default function Home() {
 
   const { orders, totalEstrellas, loading: ordersLoading } = useWeekOrders(weekStart)
   const { announcement } = useAnnouncement()
+  const bracket = useBonoBracket(profile?.tipo_distrito)
 
   const tabDays = weekDays(weekStart)
 
@@ -120,7 +131,7 @@ export default function Home() {
   const productividad = diasTrabajados > 0 ? (totalOrdenes / diasTrabajados).toFixed(1) : '0'
 
   const hint = weekStart === currentWeek
-    ? getBonusHint(totalEstrellas, profile.meta_estrellas, profile.tipo_distrito)
+    ? getBonusHint(totalEstrellas, profile.meta_estrellas, profile.tipo_distrito, bracket)
     : null
 
   const showModal = announcement && !dismissed
