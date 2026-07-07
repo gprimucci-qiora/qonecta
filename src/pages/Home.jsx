@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useProfile } from '../hooks/useProfile'
 import { useAuth } from '../hooks/useAuth'
@@ -10,6 +10,52 @@ import OrderItem from '../components/OrderItem'
 import Gauge from '../components/Gauge'
 
 const DAY_LABELS = ['LUN', 'MAR', 'MIÉ', 'JUE', 'VIE', 'SÁB', 'DOM']
+
+const BURST_EMOJIS = {
+  alerta:   ['🚨', '⚡', '🚨', '⚠️', '🚨', '⚡'],
+  rally:    ['🎉', '🎊', '⭐', '🌟', '🏆', '🎈', '✨', '🎉'],
+  reminder: ['📌', '🔔', '💡', '📌', '🔔'],
+}
+
+function EmojiExplosion({ tipo }) {
+  const emojis = BURST_EMOJIS[tipo] ?? BURST_EMOJIS.alerta
+  const [particles] = useState(() =>
+    Array.from({ length: 18 }, (_, i) => {
+      const angle = (2 * Math.PI * i) / 18 + (Math.random() - 0.5) * 0.6
+      const dist  = 70 + Math.random() * 110
+      return {
+        id:    i,
+        emoji: emojis[i % emojis.length],
+        ex:    `${(Math.cos(angle) * dist).toFixed(1)}px`,
+        ey:    `${(Math.sin(angle) * dist).toFixed(1)}px`,
+        er:    `${Math.floor(Math.random() * 80 - 40)}deg`,
+        delay: `${(i * 0.018).toFixed(3)}s`,
+        size:  16 + Math.floor(Math.random() * 14),
+      }
+    })
+  )
+  return (
+    <div style={{ position: 'fixed', inset: 0, pointerEvents: 'none', zIndex: 1002 }}>
+      {particles.map(p => (
+        <span
+          key={p.id}
+          style={{
+            position: 'absolute', left: '50%', top: '46%',
+            fontSize: p.size, lineHeight: 1,
+            '--ex': p.ex, '--ey': p.ey, '--er': p.er,
+            animationName: 'emoji-burst',
+            animationDuration: '0.9s',
+            animationTimingFunction: 'cubic-bezier(0.15, 0.85, 0.3, 1)',
+            animationDelay: p.delay,
+            animationFillMode: 'forwards',
+          }}
+        >
+          {p.emoji}
+        </span>
+      ))}
+    </div>
+  )
+}
 
 function weekDays(weekStart) {
   return Array.from({ length: 7 }, (_, i) => {
@@ -88,10 +134,20 @@ export default function Home() {
     return days.includes(today) ? today : days[0]
   })
   const [dismissed, setDismissed] = useState(false)
+  const [burstKey, setBurstKey] = useState(0)
 
   const { orders, totalEstrellas, loading: ordersLoading } = useWeekOrders(weekStart)
   const { announcement } = useAnnouncement()
   const bracket = useBonoBracket(profile?.tipo_distrito)
+
+  const prevAnnId = useRef(null)
+  useEffect(() => {
+    if (announcement?.id && announcement.id !== prevAnnId.current) {
+      prevAnnId.current = announcement.id
+      setDismissed(false)
+      setBurstKey(k => k + 1)
+    }
+  }, [announcement?.id])
 
   const tabDays = weekDays(weekStart)
 
@@ -140,6 +196,8 @@ export default function Home() {
     <div className="page">
 
       {/* Announcement modal */}
+      {showModal && <EmojiExplosion key={burstKey} tipo={announcement.tipo || 'alerta'} />}
+
       {showModal && (() => {
         const tipo = announcement.tipo || 'alerta'
         const TIPO_STYLE = {
