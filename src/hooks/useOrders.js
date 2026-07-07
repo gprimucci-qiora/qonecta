@@ -103,7 +103,7 @@ export function useAnnouncement() {
   useEffect(() => {
     supabase
       .from('announcements')
-      .select('id, titulo, mensaje')
+      .select('id, titulo, mensaje, tipo')
       .eq('activo', true)
       .order('created_at', { ascending: false })
       .limit(1)

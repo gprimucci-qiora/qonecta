@@ -140,43 +140,53 @@ export default function Home() {
     <div className="page">
 
       {/* Announcement modal */}
-      {showModal && (
-        <div
-          style={{
-            position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)',
-            zIndex: 1000, display: 'flex', alignItems: 'center',
-            justifyContent: 'center', padding: 24,
-          }}
-          onClick={() => setDismissed(true)}
-        >
+      {showModal && (() => {
+        const tipo = announcement.tipo || 'alerta'
+        const TIPO_STYLE = {
+          alerta:   { bg: '#FFF1F0', border: '#FF3B30', btn: '#FF3B30', icon: '🚨' },
+          rally:    { bg: '#F0FFF5', border: '#30D158', btn: '#1A7F37', icon: '🎉' },
+          reminder: { bg: '#FFFBEB', border: '#FF9F0A', btn: '#B45309', icon: '📌' },
+        }
+        const s = TIPO_STYLE[tipo] ?? TIPO_STYLE.alerta
+        return (
           <div
             style={{
-              background: '#fff', borderRadius: 20, padding: '28px 24px',
-              maxWidth: 400, width: '100%',
-              boxShadow: '0 24px 64px rgba(0,0,0,0.28)',
+              position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)',
+              zIndex: 1000, display: 'flex', alignItems: 'center',
+              justifyContent: 'center', padding: 24,
             }}
-            onClick={e => e.stopPropagation()}
+            onClick={() => setDismissed(true)}
           >
-            <div style={{ fontSize: 32, marginBottom: 14, lineHeight: 1 }}>🚨</div>
-            <div style={{ fontSize: 22, fontWeight: 800, color: '#1C1C1E', marginBottom: 10, lineHeight: 1.25 }}>
-              {announcement.titulo || 'Aviso importante'}
-            </div>
-            <p style={{ fontSize: 15, lineHeight: 1.65, color: '#3C3C43', margin: '0 0 24px' }}>
-              {announcement.mensaje}
-            </p>
-            <button
-              onClick={() => setDismissed(true)}
+            <div
               style={{
-                width: '100%', padding: 14, background: '#1C1C1E', color: '#fff',
-                border: 'none', borderRadius: 12, fontSize: 16, fontWeight: 700,
-                cursor: 'pointer', fontFamily: 'inherit',
+                background: s.bg, borderRadius: 20, padding: '28px 24px',
+                maxWidth: 400, width: '100%',
+                boxShadow: '0 24px 64px rgba(0,0,0,0.28)',
+                border: `2px solid ${s.border}`,
               }}
+              onClick={e => e.stopPropagation()}
             >
-              Entendido
-            </button>
+              <div style={{ fontSize: 32, marginBottom: 14, lineHeight: 1 }}>{s.icon}</div>
+              <div style={{ fontSize: 22, fontWeight: 800, color: '#1C1C1E', marginBottom: 10, lineHeight: 1.25 }}>
+                {announcement.titulo || 'Aviso importante'}
+              </div>
+              <p style={{ fontSize: 15, lineHeight: 1.65, color: '#3C3C43', margin: '0 0 24px' }}>
+                {announcement.mensaje}
+              </p>
+              <button
+                onClick={() => setDismissed(true)}
+                style={{
+                  width: '100%', padding: 14, background: s.btn, color: '#fff',
+                  border: 'none', borderRadius: 12, fontSize: 16, fontWeight: 700,
+                  cursor: 'pointer', fontFamily: 'inherit',
+                }}
+              >
+                Entendido
+              </button>
+            </div>
           </div>
-        </div>
-      )}
+        )
+      })()}
 
       {/* 1. Welcome row */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '16px 0 0' }}>
@@ -232,6 +242,7 @@ export default function Home() {
           display: 'flex',
           alignItems: 'center',
           gap: 8,
+          marginBottom: 4,
         }}>
           <span style={{ fontSize: 16, flexShrink: 0 }}>{hint.positive ? '✅' : '💡'}</span>
           <span style={{ fontSize: 13, lineHeight: 1.4, color: '#1C1C1E' }}>{hint.msg}</span>
