@@ -82,6 +82,23 @@ export function useWeekOrders(weekStart) {
   return { orders, totalEstrellas: sumEstrellas(orders), loading }
 }
 
+export function useAllAnnouncements() {
+  const [announcements, setAnnouncements] = useState([])
+  const [loading, setLoading] = useState(true)
+  useEffect(() => {
+    supabase
+      .from('announcements')
+      .select('id, tipo, titulo, mensaje, created_at')
+      .eq('activo', true)
+      .order('created_at', { ascending: false })
+      .then(({ data }) => {
+        setAnnouncements(data ?? [])
+        setLoading(false)
+      })
+  }, [])
+  return { announcements, loading }
+}
+
 export function useBonoBracket(tipoDistrito) {
   const [bracket, setBracket] = useState(null)
   useEffect(() => {
