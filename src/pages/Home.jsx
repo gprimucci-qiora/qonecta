@@ -190,6 +190,23 @@ export default function Home() {
     ? getBonusHint(totalEstrellas, profile.meta_estrellas, profile.tipo_distrito, bracket)
     : null
 
+  function getCurrentMonto() {
+    if (!bracket) return null
+    let base = 0
+    if (alcancePct >= 100) base = bracket.monto_100
+    else if (alcancePct >= 90) base = bracket.monto_90
+    else if (alcancePct >= 80) base = bracket.monto_80
+    const dist = (profile.tipo_distrito || '').toUpperCase()
+    let adicional = 0
+    if (dist === 'A' && alcancePct >= 110) adicional = 500
+    else if (dist === 'B' && alcancePct >= 100) {
+      const extra = Math.max(0, totalEstrellas - profile.meta_estrellas)
+      adicional = Math.min(Math.floor(extra / 6) * 100, 500)
+    }
+    return base + adicional
+  }
+  const monto = getCurrentMonto()
+
   const showModal = announcement && !dismissed
 
   return (
@@ -277,13 +294,29 @@ export default function Home() {
       <div className="card" style={{ textAlign: 'center', paddingTop: 16, paddingBottom: 16 }}>
         <Gauge value={totalEstrellas} max={profile.meta_estrellas} />
         <div style={{ marginTop: 4 }}>
-          <div style={{ fontSize: 32, fontWeight: 700, color: 'var(--color-text)', lineHeight: 1 }}>
-            {alcancePct.toFixed(1)}
-            <span style={{ fontSize: 18, fontWeight: 600, color: nivel.color }}>%</span>
-          </div>
-          <div style={{ fontSize: 13, color: 'var(--color-text-sec)', marginTop: 4 }}>
-            {totalEstrellas} de {profile.meta_estrellas} estrellas esta semana
-          </div>
+          {monto !== null ? (
+            <>
+              <div style={{ fontSize: 38, fontWeight: 800, color: 'var(--color-text)', lineHeight: 1 }}>
+                {fmt(monto)}
+              </div>
+              <div style={{ fontSize: 12, color: 'var(--color-text-sec)', marginTop: 4 }}>
+                {monto > 0 ? 'llevas asegurado esta semana' : 'llega al 80% para tu primer bono'}
+              </div>
+              <div style={{ fontSize: 13, color: 'var(--color-text-sec)', marginTop: 6 }}>
+                {alcancePct.toFixed(1)}% · {totalEstrellas} de {profile.meta_estrellas} ★
+              </div>
+            </>
+          ) : (
+            <>
+              <div style={{ fontSize: 32, fontWeight: 700, color: 'var(--color-text)', lineHeight: 1 }}>
+                {alcancePct.toFixed(1)}
+                <span style={{ fontSize: 18, fontWeight: 600, color: nivel.color }}>%</span>
+              </div>
+              <div style={{ fontSize: 13, color: 'var(--color-text-sec)', marginTop: 4 }}>
+                {totalEstrellas} de {profile.meta_estrellas} estrellas esta semana
+              </div>
+            </>
+          )}
           <div style={{ marginTop: 8 }}>
             <NivelBadge alcancePct={alcancePct} />
           </div>

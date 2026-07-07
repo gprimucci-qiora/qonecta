@@ -1,5 +1,14 @@
+function tierColor(pct) {
+  if (pct >= 100) return '#3F873F'
+  if (pct >= 90)  return '#30D158'
+  if (pct >= 80)  return '#FFCD00'
+  return '#FF3B30'
+}
+
 export default function Gauge({ value, max }) {
-  const pct = max > 0 ? Math.min(value / max, 1) : 0
+  const pct = max > 0 ? Math.min(value / max, 1.1) : 0
+  const clampedPct = Math.min(pct, 1)
+  const alcancePct = max > 0 ? (value / max) * 100 : 0
 
   const R = 58
   const cx = 100
@@ -13,28 +22,20 @@ export default function Gauge({ value, max }) {
   const [bx2, by2] = polar(0)
   const bgArc = `M ${bx1} ${by1} A ${R} ${R} 0 0 1 ${bx2} ${by2}`
 
-  const fillAngle = Math.PI - pct * Math.PI
+  const fillAngle = Math.PI - clampedPct * Math.PI
   const [fx1, fy1] = polar(Math.PI)
   const [fx2, fy2] = polar(fillAngle)
-  const largeArc = 0
-  const fillArc = pct > 0
-    ? `M ${fx1} ${fy1} A ${R} ${R} 0 ${largeArc} 1 ${fx2} ${fy2}`
+  const fillArc = clampedPct > 0
+    ? `M ${fx1} ${fy1} A ${R} ${R} 0 0 1 ${fx2} ${fy2}`
     : null
+
+  const color = tierColor(alcancePct)
 
   return (
     <svg viewBox="0 0 200 90" style={{ width: '100%', maxWidth: 200, display: 'block', margin: '0 auto' }}>
-      <defs>
-        <linearGradient id="gauge-gradient" x1="0%" y1="0%" x2="100%" y2="0%">
-          <stop offset="0%"   stopColor="#FF453A" />
-          <stop offset="33%"  stopColor="#FF9F0A" />
-          <stop offset="66%"  stopColor="#FFD60A" />
-          <stop offset="100%" stopColor="#30D158" />
-        </linearGradient>
-      </defs>
-
       <path d={bgArc} fill="none" stroke="#E5E5EA" strokeWidth="12" strokeLinecap="round" />
       {fillArc && (
-        <path d={fillArc} fill="none" stroke="url(#gauge-gradient)" strokeWidth="12" strokeLinecap="round" />
+        <path d={fillArc} fill="none" stroke={color} strokeWidth="12" strokeLinecap="round" />
       )}
     </svg>
   )
