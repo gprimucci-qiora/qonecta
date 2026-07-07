@@ -89,13 +89,13 @@ export function useAnnouncement() {
   useEffect(() => {
     supabase
       .from('announcements')
-      .select('mensaje')
+      .select('id, titulo, mensaje')
       .eq('activo', true)
       .order('created_at', { ascending: false })
       .limit(1)
       .then(({ data, error }) => {
         if (error) console.error(error)
-        setAnnouncement(data?.[0]?.mensaje ?? null)
+        setAnnouncement(data?.[0] ?? null)
         setLoading(false)
       })
   }, [])

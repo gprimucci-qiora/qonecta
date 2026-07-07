@@ -4,6 +4,7 @@ import { supabase } from '../../lib/supabase'
 export default function AdminAnuncios() {
   const [anuncios, setAnuncios] = useState([])
   const [loading, setLoading] = useState(true)
+  const [newTitulo, setNewTitulo] = useState('')
   const [newMsg, setNewMsg] = useState('')
   const [saving, setSaving] = useState(false)
 
@@ -20,9 +21,14 @@ export default function AdminAnuncios() {
 
   async function handleCreate(e) {
     e.preventDefault()
-    if (!newMsg.trim()) return
+    if (!newTitulo.trim() || !newMsg.trim()) return
     setSaving(true)
-    await supabase.from('announcements').insert({ mensaje: newMsg.trim(), activo: true })
+    await supabase.from('announcements').insert({
+      titulo: newTitulo.trim(),
+      mensaje: newMsg.trim(),
+      activo: true,
+    })
+    setNewTitulo('')
     setNewMsg('')
     setSaving(false)
     load()
@@ -46,30 +52,42 @@ export default function AdminAnuncios() {
       {/* Create */}
       <div className="admin-card">
         <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 12 }}>Nuevo anuncio</div>
-        <form onSubmit={handleCreate} style={{ display: 'flex', gap: 12 }}>
-          <textarea
-            value={newMsg}
-            onChange={e => setNewMsg(e.target.value)}
-            placeholder="Escribe el mensaje para los técnicos..."
-            rows={2}
+        <form onSubmit={handleCreate} style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <input
+            value={newTitulo}
+            onChange={e => setNewTitulo(e.target.value)}
+            placeholder="Título del aviso (aparece grande en el popup)"
             style={{
-              flex: 1, padding: '10px 12px', border: '1px solid #E5E5EA',
-              borderRadius: 8, fontFamily: 'inherit', fontSize: 14,
-              resize: 'vertical', outline: 'none',
+              width: '100%', padding: '10px 12px', border: '1px solid #E5E5EA',
+              borderRadius: 8, fontFamily: 'inherit', fontSize: 14, outline: 'none',
+              boxSizing: 'border-box',
             }}
           />
-          <button
-            type="submit"
-            disabled={saving || !newMsg.trim()}
-            style={{
-              padding: '0 24px', background: '#1C1C1E', color: '#fff',
-              border: 'none', borderRadius: 8, fontFamily: 'inherit',
-              fontSize: 14, fontWeight: 600, cursor: 'pointer',
-              opacity: saving || !newMsg.trim() ? 0.5 : 1,
-            }}
-          >
-            {saving ? 'Guardando...' : 'Publicar'}
-          </button>
+          <div style={{ display: 'flex', gap: 12 }}>
+            <textarea
+              value={newMsg}
+              onChange={e => setNewMsg(e.target.value)}
+              placeholder="Cuerpo del mensaje para los técnicos..."
+              rows={2}
+              style={{
+                flex: 1, padding: '10px 12px', border: '1px solid #E5E5EA',
+                borderRadius: 8, fontFamily: 'inherit', fontSize: 14,
+                resize: 'vertical', outline: 'none',
+              }}
+            />
+            <button
+              type="submit"
+              disabled={saving || !newTitulo.trim() || !newMsg.trim()}
+              style={{
+                padding: '0 24px', background: '#1C1C1E', color: '#fff',
+                border: 'none', borderRadius: 8, fontFamily: 'inherit',
+                fontSize: 14, fontWeight: 600, cursor: 'pointer', alignSelf: 'stretch',
+                opacity: saving || !newTitulo.trim() || !newMsg.trim() ? 0.5 : 1,
+              }}
+            >
+              {saving ? 'Guardando...' : 'Publicar'}
+            </button>
+          </div>
         </form>
       </div>
 
@@ -83,6 +101,7 @@ export default function AdminAnuncios() {
           <table className="admin-table">
             <thead>
               <tr>
+                <th>Título</th>
                 <th>Mensaje</th>
                 <th>Estado</th>
                 <th>Fecha</th>
@@ -92,7 +111,8 @@ export default function AdminAnuncios() {
             <tbody>
               {anuncios.map(a => (
                 <tr key={a.id}>
-                  <td style={{ maxWidth: 480 }}>{a.mensaje}</td>
+                  <td style={{ fontWeight: 600, whiteSpace: 'nowrap' }}>{a.titulo || '—'}</td>
+                  <td style={{ maxWidth: 360, color: '#555' }}>{a.mensaje}</td>
                   <td>
                     <span style={{
                       display: 'inline-block', padding: '3px 10px', borderRadius: 999,

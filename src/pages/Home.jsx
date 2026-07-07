@@ -19,6 +19,52 @@ function weekDays(weekStart) {
   })
 }
 
+function getBonusHint(totalEstrellas, meta, tipoDistrito) {
+  if (!meta || meta === 0) return null
+  const dist = (tipoDistrito || '').toUpperCase()
+
+  if (dist === 'B') {
+    const completed = Math.floor(totalEstrellas / 6)
+    const bonoActual = Math.min(completed * 100, 500)
+    if (bonoActual >= 500) {
+      return { msg: '¡Bono adicional máximo de $500 alcanzado esta semana!', positive: true }
+    }
+    const nextAt = (completed + 1) * 6
+    const needed = nextAt - totalEstrellas
+    const bonoNext = Math.min((completed + 1) * 100, 500)
+    if (bonoActual > 0) {
+      return { msg: `Llevas $${bonoActual} de bono extra. Con ${needed} estrella${needed !== 1 ? 's' : ''} más sumas $${bonoNext}.`, positive: true }
+    }
+    return { msg: `Con ${needed} estrella${needed !== 1 ? 's' : ''} más completas 6 y sumas $100 de bono adicional.`, positive: false }
+  }
+
+  if (dist === 'A') {
+    const stars110 = Math.ceil(meta * 1.1)
+    if (totalEstrellas >= stars110) {
+      return { msg: '¡110% alcanzado! +$500 de productividad asegurados.', positive: true }
+    }
+    const needed = stars110 - totalEstrellas
+    return { msg: `${needed} estrella${needed !== 1 ? 's' : ''} más para llegar al 110% y ganar $500 adicionales.`, positive: false }
+  }
+
+  // Generic: show next tier progress
+  const alcancePct = (totalEstrellas / meta) * 100
+  if (alcancePct >= 100) {
+    return { msg: '¡100% completado! Tu bono completo está asegurado.', positive: true }
+  }
+  if (alcancePct >= 90) {
+    const needed = Math.ceil(meta) - totalEstrellas
+    return { msg: `Solo ${needed} estrella${needed !== 1 ? 's' : ''} más para completar el 100% de tu bono.`, positive: false }
+  }
+  if (alcancePct >= 80) {
+    const needed = Math.ceil(meta * 0.9) - totalEstrellas
+    return { msg: `Nivel 80% alcanzado. ${needed} estrella${needed !== 1 ? 's' : ''} más para el nivel 90%.`, positive: false }
+  }
+  const needed = Math.ceil(meta * 0.8) - totalEstrellas
+  if (needed <= 0) return null
+  return { msg: `${needed} estrella${needed !== 1 ? 's' : ''} más para alcanzar el primer nivel de bono (80%).`, positive: false }
+}
+
 export default function Home() {
   const navigate = useNavigate()
   const { signOut } = useAuth()
@@ -31,6 +77,7 @@ export default function Home() {
     const days = weekDays(currentWeek)
     return days.includes(today) ? today : days[0]
   })
+  const [dismissed, setDismissed] = useState(false)
 
   const { orders, totalEstrellas, loading: ordersLoading } = useWeekOrders(weekStart)
   const { announcement } = useAnnouncement()
@@ -47,8 +94,6 @@ export default function Home() {
     const days = weekDays(next)
     setSelectedDay(days.includes(today) ? today : days[0])
   }
-
-  const todayStr = new Date().toISOString().split('T')[0]
 
   if (profileLoading) return <div className="loading-screen"><span>Cargando...</span></div>
   if (profileError) return (
@@ -74,8 +119,53 @@ export default function Home() {
   const diasTrabajados = new Set(orders.map(o => o.fecha_termino)).size
   const productividad = diasTrabajados > 0 ? (totalOrdenes / diasTrabajados).toFixed(1) : '0'
 
+  const hint = weekStart === currentWeek
+    ? getBonusHint(totalEstrellas, profile.meta_estrellas, profile.tipo_distrito)
+    : null
+
+  const showModal = announcement && !dismissed
+
   return (
     <div className="page">
+
+      {/* Announcement modal */}
+      {showModal && (
+        <div
+          style={{
+            position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)',
+            zIndex: 1000, display: 'flex', alignItems: 'center',
+            justifyContent: 'center', padding: 24,
+          }}
+          onClick={() => setDismissed(true)}
+        >
+          <div
+            style={{
+              background: '#fff', borderRadius: 20, padding: '28px 24px',
+              maxWidth: 400, width: '100%',
+              boxShadow: '0 24px 64px rgba(0,0,0,0.28)',
+            }}
+            onClick={e => e.stopPropagation()}
+          >
+            <div style={{ fontSize: 32, marginBottom: 14, lineHeight: 1 }}>🚨</div>
+            <div style={{ fontSize: 22, fontWeight: 800, color: '#1C1C1E', marginBottom: 10, lineHeight: 1.25 }}>
+              {announcement.titulo || 'Aviso importante'}
+            </div>
+            <p style={{ fontSize: 15, lineHeight: 1.65, color: '#3C3C43', margin: '0 0 24px' }}>
+              {announcement.mensaje}
+            </p>
+            <button
+              onClick={() => setDismissed(true)}
+              style={{
+                width: '100%', padding: 14, background: '#1C1C1E', color: '#fff',
+                border: 'none', borderRadius: 12, fontSize: 16, fontWeight: 700,
+                cursor: 'pointer', fontFamily: 'inherit',
+              }}
+            >
+              Entendido
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* 1. Welcome row */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '16px 0 0' }}>
@@ -107,7 +197,6 @@ export default function Home() {
       {/* 2. Gauge card */}
       <div className="card" style={{ textAlign: 'center', paddingTop: 16, paddingBottom: 16 }}>
         <Gauge value={totalEstrellas} max={profile.meta_estrellas} />
-        {/* Stats row below gauge */}
         <div style={{ marginTop: 4 }}>
           <div style={{ fontSize: 32, fontWeight: 700, color: 'var(--color-text)', lineHeight: 1 }}>
             {alcancePct.toFixed(1)}
@@ -121,6 +210,22 @@ export default function Home() {
           </div>
         </div>
       </div>
+
+      {/* Bonus hint */}
+      {hint && (
+        <div style={{
+          background: hint.positive ? '#F0FFF4' : '#F0F8FF',
+          border: `1px solid ${hint.positive ? '#30D158' : '#00B2E3'}`,
+          borderRadius: 10,
+          padding: '10px 14px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 8,
+        }}>
+          <span style={{ fontSize: 16, flexShrink: 0 }}>{hint.positive ? '✅' : '💡'}</span>
+          <span style={{ fontSize: 13, lineHeight: 1.4, color: '#1C1C1E' }}>{hint.msg}</span>
+        </div>
+      )}
 
       {/* 3. Mini KPIs */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>
@@ -137,29 +242,7 @@ export default function Home() {
         ))}
       </div>
 
-      {/* 4. Announcement */}
-      {announcement && (
-        <div style={{
-          background: '#FFF0F0',
-          border: '1.5px solid #FF3B30',
-          borderLeft: '4px solid #FF3B30',
-          borderRadius: 12,
-          padding: '12px 14px',
-          display: 'flex',
-          gap: 10,
-          alignItems: 'flex-start',
-        }}>
-          <span style={{ fontSize: 20, flexShrink: 0, lineHeight: 1.3 }}>🚨</span>
-          <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 10, fontWeight: 700, color: '#FF3B30', textTransform: 'uppercase', letterSpacing: '.6px', marginBottom: 4 }}>
-              Aviso importante
-            </div>
-            <p style={{ fontSize: 14, lineHeight: 1.5, color: '#1C1C1E', margin: 0 }}>{announcement}</p>
-          </div>
-        </div>
-      )}
-
-      {/* 5. Day tabs + orders */}
+      {/* 4. Day tabs + orders */}
       <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
         <div className="day-tabs">
           {tabDays.map((day, i) => {
@@ -191,7 +274,7 @@ export default function Home() {
         </div>
       </div>
 
-      {/* 6. Footer link */}
+      {/* 5. Footer link */}
       <button
         className="btn-text"
         style={{ width: '100%', textAlign: 'center', padding: '12px 0', marginBottom: 8 }}
