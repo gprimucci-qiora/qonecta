@@ -20,17 +20,17 @@ const BURST_EMOJIS = {
 function EmojiExplosion({ tipo }) {
   const emojis = BURST_EMOJIS[tipo] ?? BURST_EMOJIS.alerta
   const [particles] = useState(() =>
-    Array.from({ length: 18 }, (_, i) => {
-      const angle = (2 * Math.PI * i) / 18 + (Math.random() - 0.5) * 0.6
-      const dist  = 70 + Math.random() * 110
+    Array.from({ length: 22 }, (_, i) => {
+      const angle = (2 * Math.PI * i) / 22 + (Math.random() - 0.5) * 0.5
+      const dist  = 160 + Math.random() * 200
       return {
         id:    i,
         emoji: emojis[i % emojis.length],
         ex:    `${(Math.cos(angle) * dist).toFixed(1)}px`,
         ey:    `${(Math.sin(angle) * dist).toFixed(1)}px`,
-        er:    `${Math.floor(Math.random() * 80 - 40)}deg`,
-        delay: `${(i * 0.018).toFixed(3)}s`,
-        size:  16 + Math.floor(Math.random() * 14),
+        er:    `${Math.floor(Math.random() * 120 - 60)}deg`,
+        delay: `${(i * 0.022).toFixed(3)}s`,
+        size:  42 + Math.floor(Math.random() * 28),
       }
     })
   )
@@ -40,12 +40,12 @@ function EmojiExplosion({ tipo }) {
         <span
           key={p.id}
           style={{
-            position: 'absolute', left: '50%', top: '46%',
+            position: 'absolute', left: '50%', top: '50%',
             fontSize: p.size, lineHeight: 1,
             '--ex': p.ex, '--ey': p.ey, '--er': p.er,
             animationName: 'emoji-burst',
-            animationDuration: '0.9s',
-            animationTimingFunction: 'cubic-bezier(0.15, 0.85, 0.3, 1)',
+            animationDuration: '1.6s',
+            animationTimingFunction: 'cubic-bezier(0.1, 0.9, 0.25, 1)',
             animationDelay: p.delay,
             animationFillMode: 'forwards',
           }}
