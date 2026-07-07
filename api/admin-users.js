@@ -150,17 +150,7 @@ export default async function handler(req, res) {
           continue
         }
 
-        await admin.from('profiles').upsert({
-          id: created.user.id,
-          usuario_ffm: ffm,
-          nombre: ffm,
-          sucursal: '',
-          tipo_cuadrilla: 'NORMAL',
-          meta_estrellas: 0,
-          tipo_distrito: '',
-        }, { onConflict: 'usuario_ffm' })
-
-        results.created.push(ffm)
+        results.created.push({ ffm, userId: created.user.id })
       }
 
       return res.json({ ok: true, ...results })

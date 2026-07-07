@@ -141,12 +141,8 @@ export default function AdminUpload() {
         cuentasCreadas = synced.created?.length ?? 0
         cuentasErrores = synced.errors?.length ?? 0
 
-        // Re-fetch IDs for newly created accounts
-        if (cuentasCreadas > 0) {
-          const { data: newProfiles } = await supabase
-            .from('profiles').select('id, usuario_ffm').in('usuario_ffm', synced.created)
-          ;(newProfiles ?? []).forEach(p => { ffmToId[p.usuario_ffm] = p.id })
-        }
+        // Map userId directly from API response — no extra round-trip needed
+        ;(synced.created ?? []).forEach(({ ffm, userId }) => { ffmToId[ffm] = userId })
       }
 
       // 3. Upsert full profiles for all techs with an account

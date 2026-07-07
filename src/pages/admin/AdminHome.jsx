@@ -85,7 +85,8 @@ export default function AdminHome() {
     setSyncMsg(null)
     const result = await adminPost('sync_tecnicos', { ffms: missing })
     if (result.ok) {
-      setSyncMsg(`✓ ${result.created.length} cuentas creadas${result.skipped.length ? `, ${result.skipped.length} ya existían` : ''}${result.errors.length ? `, ${result.errors.length} errores` : ''}.`)
+      const createdCount = result.created?.length ?? 0
+      setSyncMsg(`✓ ${createdCount} cuentas creadas${result.skipped?.length ? `, ${result.skipped.length} ya existían` : ''}${result.errors?.length ? `, ${result.errors.length} errores` : ''}.`)
       setMissing([])
       await load(weekStart)
     } else {
