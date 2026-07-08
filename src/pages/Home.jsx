@@ -135,8 +135,9 @@ export default function Home() {
   })
   const [dismissed, setDismissed] = useState(false)
   const [burstKey, setBurstKey] = useState(0)
+  const [refreshKey, setRefreshKey] = useState(0)
 
-  const { orders, totalEstrellas, loading: ordersLoading } = useWeekOrders(weekStart)
+  const { orders, totalEstrellas, loading: ordersLoading } = useWeekOrders(weekStart, refreshKey)
   const { announcement } = useAnnouncement()
   const bracket = useBonoBracket(profile?.tipo_distrito)
 
@@ -283,11 +284,28 @@ export default function Home() {
         <span style={{ fontSize: 13, fontWeight: 600, color: weekStart === currentWeek ? 'var(--color-text)' : 'var(--color-primary)' }}>
           {weekStart === currentWeek ? `Semana actual · ${formatWeekRange(weekStart)}` : `Semana ${formatWeekRange(weekStart)}`}
         </span>
-        <button
-          onClick={() => goWeek(1)}
-          disabled={weekStart >= currentWeek}
-          style={{ background: 'none', border: 'none', fontSize: 22, cursor: weekStart >= currentWeek ? 'default' : 'pointer', padding: '2px 10px', lineHeight: 1, color: weekStart >= currentWeek ? 'var(--color-border, #E5E5EA)' : 'var(--color-text-sec)' }}
-        >›</button>
+        {weekStart >= currentWeek ? (
+          /* On current week: show refresh button instead of disabled › */
+          <button
+            onClick={() => setRefreshKey(k => k + 1)}
+            title="Actualizar"
+            style={{ background: 'none', border: 'none', padding: '2px 10px', cursor: 'pointer', lineHeight: 1, color: 'var(--color-text-sec)' }}
+          >
+            <svg
+              width="18" height="18" viewBox="0 0 24 24" fill="none"
+              stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"
+              style={{ animation: ordersLoading ? 'spin 0.7s linear infinite' : 'none', display: 'block' }}
+            >
+              <polyline points="23 4 23 10 17 10"/>
+              <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+            </svg>
+          </button>
+        ) : (
+          <button
+            onClick={() => goWeek(1)}
+            style={{ background: 'none', border: 'none', fontSize: 22, cursor: 'pointer', padding: '2px 10px', lineHeight: 1, color: 'var(--color-text-sec)' }}
+          >›</button>
+        )}
       </div>
 
       {/* 2. Gauge card */}

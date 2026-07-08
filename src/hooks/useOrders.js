@@ -59,13 +59,14 @@ export function useAllWeeks() {
   return { weeks, loading }
 }
 
-export function useWeekOrders(weekStart) {
+export function useWeekOrders(weekStart, refreshKey = 0) {
   const { profile } = useProfile()
   const [orders, setOrders] = useState([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     if (!profile || !weekStart) return
+    setLoading(true)
     supabase
       .from('orders')
       .select('*')
@@ -77,7 +78,7 @@ export function useWeekOrders(weekStart) {
         setOrders(data ?? [])
         setLoading(false)
       })
-  }, [profile, weekStart])
+  }, [profile, weekStart, refreshKey])
 
   return { orders, totalEstrellas: sumEstrellas(orders), loading }
 }

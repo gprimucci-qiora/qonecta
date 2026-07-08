@@ -1,5 +1,9 @@
 @import url('https://fonts.googleapis.com/css2?family=Questrial&display=swap');
 
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
 @keyframes emoji-burst {
   0%   { transform: translate(-50%, -50%) scale(0.1) rotate(0deg); opacity: 1; }
   80%  { opacity: 1; }
