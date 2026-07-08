@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useProfile } from '../hooks/useProfile'
 import { useAuth } from '../hooks/useAuth'
-import { useWeekOrders, useAnnouncement, useBonoBracket } from '../hooks/useOrders'
+import { useWeekOrders, useAllWeeks, useAnnouncement, useBonoBracket } from '../hooks/useOrders'
 import { calcAlcance, getNivel, formatWeekRange, getWeekStart } from '../lib/bonos'
 import Avatar from '../components/Avatar'
 import NivelBadge from '../components/NivelBadge'
@@ -138,8 +138,26 @@ export default function Home() {
   const [refreshKey, setRefreshKey] = useState(0)
 
   const { orders, totalEstrellas, loading: ordersLoading } = useWeekOrders(weekStart, refreshKey)
+  const { weeks } = useAllWeeks()
   const { announcement } = useAnnouncement()
   const bracket = useBonoBracket(profile?.tipo_distrito)
+
+  // Auto-navigate to most recent week with data if current week is empty
+  const autoNavigated = useRef(false)
+  useEffect(() => {
+    if (autoNavigated.current) return
+    if (ordersLoading) return
+    if (orders.length > 0) return
+    if (weekStart !== currentWeek) return
+    if (!weeks || weeks.length === 0) return
+    const mostRecent = weeks[0].semana_inicio
+    if (mostRecent && mostRecent < currentWeek) {
+      autoNavigated.current = true
+      setWeekStart(mostRecent)
+      const days = weekDays(mostRecent)
+      setSelectedDay(days[days.length - 1])
+    }
+  }, [ordersLoading, orders.length, weeks, weekStart, currentWeek])
 
   const prevAnnId = useRef(null)
   useEffect(() => {
