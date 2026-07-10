@@ -10,6 +10,7 @@ const NAV_ITEMS = [
   { to: '/admin/anuncios',   label: 'Anuncios',    icon: '📢' },
   { to: '/admin/upload',     label: 'Subir Excel', icon: '⬆' },
   { to: '/admin/gestion',   label: 'Gestión',     icon: '⚙️' },
+  { to: '/admin/bot',      label: 'Bot FFM',     icon: '🤖' },
 ]
 
 export default function AdminNav() {

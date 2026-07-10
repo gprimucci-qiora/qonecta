@@ -1,0 +1,71 @@
+name: FFM Download
+
+on:
+  workflow_dispatch:
+    inputs:
+      fecha:
+        description: 'Fecha en formato YYYY-MM-DD'
+        required: true
+        type: string
+      job_id:
+        description: 'UUID del job en Supabase (bot_jobs.id)'
+        required: true
+        type: string
+
+jobs:
+  download:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: bot
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: bot/requirements.txt
+
+      - name: Instalar dependencias Python
+        run: pip install -r requirements.txt
+
+      - name: Instalar Chromium
+        run: playwright install chromium --with-deps
+
+      - name: Descargar reporte FFM
+        env:
+          FFM_USER: ${{ secrets.FFM_USER }}
+          FFM_PASSWORD: ${{ secrets.FFM_PASSWORD }}
+          HEADLESS: 'true'
+        run: python -m ffm_bot descargar --fecha ${{ inputs.fecha }}
+
+      - name: Limpiar reporte
+        run: python -m ffm_bot limpiar downloads/reporteCierreDiario_${{ inputs.fecha }}.xlsx
+
+      - name: Subir resultado a Supabase
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          JOB_ID: ${{ inputs.job_id }}
+          FECHA: ${{ inputs.fecha }}
+        run: python scripts/upload_result.py
+
+      - name: Marcar error si algo falló
+        if: failure()
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          JOB_ID: ${{ inputs.job_id }}
+        run: |
+          python - <<'EOF'
+          import os, httpx
+          url = os.environ["SUPABASE_URL"]
+          key = os.environ["SUPABASE_SERVICE_KEY"]
+          jid = os.environ["JOB_ID"]
+          h = {"apikey": key, "Authorization": f"Bearer {key}",
+               "Content-Type": "application/json", "Prefer": "return=minimal"}
+          httpx.patch(f"{url}/rest/v1/bot_jobs?id=eq.{jid}", headers=h,
+                      json={"status": "error", "error_msg": "El workflow de GitHub falló. Revisa los logs."})
+          EOF

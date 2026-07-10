@@ -18,6 +18,7 @@ import AdminAnuncios from './pages/admin/AdminAnuncios'
 import AdminUpload from './pages/admin/AdminUpload'
 import AdminOperaciones from './pages/admin/AdminOperaciones'
 import AdminGestion from './pages/admin/AdminGestion'
+import AdminBot from './pages/admin/AdminBot'
 
 const ADMIN_EMAIL = 'g.primucci@qiora.com.mx'
 function isAdmin(user) {
@@ -210,6 +211,7 @@ function AdminShell() {
           <Route path="anuncios" element={<AdminAnuncios />} />
           <Route path="upload" element={<AdminUpload />} />
           <Route path="gestion" element={<AdminGestion />} />
+          <Route path="bot" element={<AdminBot />} />
           <Route path="*" element={<Navigate to="/admin" replace />} />
         </Routes>
       </main>

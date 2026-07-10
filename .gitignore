@@ -26,3 +26,4 @@ dist-ssr
 # Project-specific
 .superpowers/sdd/
 .env.local
+scripts/import_bono.py
