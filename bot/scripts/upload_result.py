@@ -65,7 +65,10 @@ def main():
         timeout=15,
     )
     signed.raise_for_status()
-    signed_url = SUPABASE_URL + signed.json()["signedURL"]
+    raw = signed.json()["signedURL"]
+    if raw.startswith("/object/"):
+        raw = "/storage/v1" + raw
+    signed_url = SUPABASE_URL.rstrip("/") + raw
 
     # 3. Marcar job como completado
     update_job(status="done", file_url=signed_url)
