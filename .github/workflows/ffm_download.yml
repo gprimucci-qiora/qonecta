@@ -34,6 +34,19 @@ jobs:
       - name: Instalar Chromium
         run: playwright install chromium --with-deps
 
+      - name: Paso — descargando de FFM
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          JOB_ID: ${{ inputs.job_id }}
+        run: |
+          python - <<'EOF'
+          import os, httpx
+          url, key, jid = os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_KEY"], os.environ["JOB_ID"]
+          h = {"apikey": key, "Authorization": f"Bearer {key}", "Content-Type": "application/json", "Prefer": "return=minimal"}
+          httpx.patch(f"{url}/rest/v1/bot_jobs?id=eq.{jid}", headers=h, json={"status": "running", "step": "downloading"})
+          EOF
+
       - name: Descargar reporte FFM
         env:
           FFM_USER: ${{ secrets.FFM_USER }}
@@ -41,8 +54,34 @@ jobs:
           HEADLESS: 'true'
         run: python -m ffm_bot descargar --fecha ${{ inputs.fecha }}
 
+      - name: Paso — limpiando datos
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          JOB_ID: ${{ inputs.job_id }}
+        run: |
+          python - <<'EOF'
+          import os, httpx
+          url, key, jid = os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_KEY"], os.environ["JOB_ID"]
+          h = {"apikey": key, "Authorization": f"Bearer {key}", "Content-Type": "application/json", "Prefer": "return=minimal"}
+          httpx.patch(f"{url}/rest/v1/bot_jobs?id=eq.{jid}", headers=h, json={"step": "cleaning"})
+          EOF
+
       - name: Limpiar reporte
         run: python -m ffm_bot limpiar downloads/reporteCierreDiario_${{ inputs.fecha }}.xlsx
+
+      - name: Paso — subiendo resultado
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          JOB_ID: ${{ inputs.job_id }}
+        run: |
+          python - <<'EOF'
+          import os, httpx
+          url, key, jid = os.environ["SUPABASE_URL"], os.environ["SUPABASE_SERVICE_KEY"], os.environ["JOB_ID"]
+          h = {"apikey": key, "Authorization": f"Bearer {key}", "Content-Type": "application/json", "Prefer": "return=minimal"}
+          httpx.patch(f"{url}/rest/v1/bot_jobs?id=eq.{jid}", headers=h, json={"step": "uploading"})
+          EOF
 
       - name: Subir resultado a Supabase
         env:

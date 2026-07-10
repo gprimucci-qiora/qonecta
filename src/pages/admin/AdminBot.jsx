@@ -12,11 +12,97 @@ function yesterday() {
   return d.toISOString().split('T')[0]
 }
 
-const STATUS_LABEL = {
-  pending: { text: 'En cola — esperando runner de GitHub…',  color: '#8E8E93', icon: '⏳' },
-  running: { text: 'Corriendo — descargando y limpiando…',   color: '#FF9F0A', icon: '🔄' },
-  done:    { text: 'Completado',                              color: '#30D158', icon: '✅' },
-  error:   { text: 'Error',                                   color: '#FF3B30', icon: '❌' },
+const STEPS = [
+  { key: 'pending',     label: 'En cola',           icon: '⏳' },
+  { key: 'downloading', label: 'Entrando a FFM y descargando reporte', icon: '⬇️' },
+  { key: 'cleaning',   label: 'Limpiando datos',    icon: '🔄' },
+  { key: 'uploading',  label: 'Subiendo resultado', icon: '☁️' },
+  { key: 'done',       label: 'Completado',         icon: '✅' },
+]
+
+function currentStepIndex(job) {
+  if (!job) return -1
+  if (job.status === 'done') return 4
+  if (job.status === 'error') return STEPS.findIndex(s => s.key === (job.step || 'pending'))
+  return STEPS.findIndex(s => s.key === (job.step || 'pending'))
+}
+
+function StepProgress({ job }) {
+  const activeIdx = currentStepIndex(job)
+  const isError = job?.status === 'error'
+
+  return (
+    <div style={{ padding: '8px 0 4px' }}>
+      {STEPS.map((step, i) => {
+        const done = i < activeIdx
+        const active = i === activeIdx
+        const error = active && isError
+
+        let color = '#C7C7CC'
+        if (done) color = '#30D158'
+        if (active && !isError) color = '#007AFF'
+        if (error) color = '#FF3B30'
+
+        return (
+          <div key={step.key} style={{ display: 'flex', alignItems: 'flex-start', gap: 12, marginBottom: i < STEPS.length - 1 ? 0 : 0 }}>
+            {/* Line + circle */}
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: 24, flexShrink: 0 }}>
+              <div style={{
+                width: 24, height: 24, borderRadius: '50%',
+                background: done ? '#30D158' : active && !isError ? '#007AFF' : error ? '#FF3B30' : '#F2F2F7',
+                border: `2px solid ${color}`,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: 11, flexShrink: 0,
+                boxShadow: active && !isError ? '0 0 0 4px rgba(0,122,255,0.15)' : 'none',
+                transition: 'all 0.3s',
+              }}>
+                {done ? (
+                  <span style={{ color: '#fff', fontSize: 12, lineHeight: 1 }}>✓</span>
+                ) : error ? (
+                  <span style={{ color: '#fff', fontSize: 12, lineHeight: 1 }}>✕</span>
+                ) : active ? (
+                  <span style={{
+                    display: 'inline-block',
+                    width: 8, height: 8, borderRadius: '50%',
+                    background: '#007AFF',
+                    animation: 'pulse-dot 1.2s ease-in-out infinite',
+                  }} />
+                ) : null}
+              </div>
+              {i < STEPS.length - 1 && (
+                <div style={{
+                  width: 2, height: 28,
+                  background: done ? '#30D158' : '#E5E5EA',
+                  transition: 'background 0.3s',
+                  margin: '2px 0',
+                }} />
+              )}
+            </div>
+
+            {/* Label */}
+            <div style={{ paddingTop: 2, paddingBottom: i < STEPS.length - 1 ? 28 : 0 }}>
+              <div style={{
+                fontSize: 14,
+                fontWeight: active ? 700 : done ? 500 : 400,
+                color: done ? '#1C1C1E' : active ? (isError ? '#FF3B30' : '#007AFF') : '#C7C7CC',
+                lineHeight: 1.3,
+              }}>
+                {step.icon} {step.label}
+              </div>
+              {active && !isError && step.key !== 'done' && (
+                <div style={{ fontSize: 12, color: '#8E8E93', marginTop: 3 }}>
+                  {step.key === 'pending' && 'Esperando runner de GitHub (~1-2 min)…'}
+                  {step.key === 'downloading' && 'El bot está navegando FFM y descargando el archivo…'}
+                  {step.key === 'cleaning' && 'Procesando y limpiando el Excel…'}
+                  {step.key === 'uploading' && 'Guardando el archivo…'}
+                </div>
+              )}
+            </div>
+          </div>
+        )
+      })}
+    </div>
+  )
 }
 
 export default function AdminBot() {
@@ -26,7 +112,6 @@ export default function AdminBot() {
   const [job, setJob]           = useState(null)
   const pollRef                 = useRef(null)
 
-  // Cargar último job al montar
   useEffect(() => {
     supabase
       .from('bot_jobs')
@@ -37,7 +122,6 @@ export default function AdminBot() {
       .then(({ data }) => { if (data) setJob(data) })
   }, [])
 
-  // Polling mientras el job no termina
   useEffect(() => {
     if (!job || job.status === 'done' || job.status === 'error') {
       clearInterval(pollRef.current)
@@ -48,9 +132,9 @@ export default function AdminBot() {
       const { data } = await supabase
         .from('bot_jobs').select('*').eq('id', job.id).single()
       if (data) setJob(data)
-    }, 5000)
+    }, 3000)
     return () => clearInterval(pollRef.current)
-  }, [job?.id, job?.status])
+  }, [job?.id, job?.status, job?.step])
 
   async function handleStart() {
     setLoading(true)
@@ -64,8 +148,7 @@ export default function AdminBot() {
       })
       const data = await res.json()
       if (!data.ok) throw new Error(data.error)
-      // Crear job local mientras llega la data de Supabase
-      setJob({ id: data.jobId, fecha, status: 'pending', created_at: new Date().toISOString() })
+      setJob({ id: data.jobId, fecha, status: 'pending', step: 'pending', created_at: new Date().toISOString() })
     } catch (e) {
       setError(e.message)
     }
@@ -73,14 +156,12 @@ export default function AdminBot() {
   }
 
   const isRunning = job && (job.status === 'pending' || job.status === 'running')
-  const st = job ? (STATUS_LABEL[job.status] ?? STATUS_LABEL.error) : null
 
   return (
     <div className="admin-page">
       <h1 className="admin-page-title">Bot FFM</h1>
       <p style={{ fontSize: 13, color: '#8E8E93', marginBottom: 24 }}>
-        Descarga y limpia el reporte de Cierre Diario desde FFM automáticamente.<br />
-        El archivo resultante es el que se sube a SIVA.
+        Descarga y limpia el reporte de Cierre Diario desde FFM automáticamente.
       </p>
 
       {/* Trigger form */}
@@ -127,66 +208,51 @@ export default function AdminBot() {
       {/* Job status */}
       {job && (
         <div className="admin-card">
-          <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 14 }}>
-            Estado del job — {job.fecha}
-          </div>
-
-          {/* Status row */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 14 }}>
-            <span style={{ fontSize: 22, animation: job.status === 'running' ? 'spin 1s linear infinite' : 'none', display: 'inline-block' }}>
-              {st.icon}
-            </span>
-            <div>
-              <div style={{ fontSize: 14, fontWeight: 600, color: st.color }}>{st.text}</div>
-              {job.status !== 'done' && job.status !== 'error' && (
-                <div style={{ fontSize: 12, color: '#8E8E93', marginTop: 2 }}>
-                  El runner de GitHub tarda ~1-2 min en arrancar, luego ~3-5 min para el bot.
-                </div>
-              )}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+            <div style={{ fontSize: 14, fontWeight: 600 }}>
+              Reporte {job.fecha}
+            </div>
+            <div style={{ fontSize: 12, color: '#C7C7CC' }}>
+              {new Date(job.created_at).toLocaleString('es-MX')}
+              {job.triggered_by && ` · ${job.triggered_by}`}
             </div>
           </div>
 
+          <StepProgress job={job} />
+
           {/* Download button */}
           {job.status === 'done' && job.file_url && (
-            <a
-              href={job.file_url}
-              download={`CIERRE_DIARIO_${job.fecha}.xlsx`}
-              style={{
-                display: 'inline-flex', alignItems: 'center', gap: 8,
-                padding: '10px 20px', background: '#30D158', color: '#fff',
-                borderRadius: 8, fontSize: 14, fontWeight: 700,
-                textDecoration: 'none',
-              }}
-            >
-              ⬇ Descargar CIERRE_DIARIO_{job.fecha}.xlsx
-            </a>
+            <div style={{ marginTop: 20 }}>
+              <a
+                href={job.file_url}
+                download={`CIERRE_DIARIO_${job.fecha}.xlsx`}
+                style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 8,
+                  padding: '10px 20px', background: '#30D158', color: '#fff',
+                  borderRadius: 8, fontSize: 14, fontWeight: 700,
+                  textDecoration: 'none',
+                }}
+              >
+                ⬇ Descargar CIERRE_DIARIO_{job.fecha}.xlsx
+              </a>
+            </div>
           )}
 
           {/* Error message */}
           {job.status === 'error' && job.error_msg && (
-            <div style={{ padding: '10px 12px', background: '#FFF1F0', border: '1px solid #FF3B30', borderRadius: 8, fontSize: 13, color: '#FF3B30', fontFamily: 'monospace' }}>
+            <div style={{ marginTop: 16, padding: '10px 12px', background: '#FFF1F0', border: '1px solid #FF3B30', borderRadius: 8, fontSize: 13, color: '#FF3B30', fontFamily: 'monospace' }}>
               {job.error_msg}
             </div>
           )}
-
-          {/* Metadata */}
-          <div style={{ marginTop: 14, fontSize: 12, color: '#C7C7CC' }}>
-            Job ID: {job.id} · {new Date(job.created_at).toLocaleString('es-MX')}
-            {job.triggered_by && ` · por ${job.triggered_by}`}
-          </div>
         </div>
       )}
 
-      {/* Info card */}
-      <div className="admin-card" style={{ background: '#F8F8F8', border: 'none', boxShadow: 'none' }}>
-        <div style={{ fontSize: 13, color: '#8E8E93', lineHeight: 1.7 }}>
-          <strong style={{ color: '#1C1C1E' }}>¿Cómo funciona?</strong><br />
-          1. Selecciona la fecha del reporte y haz clic en <strong>Descargar</strong><br />
-          2. Un servidor de GitHub descarga el reporte crudo de FFM y lo limpia automáticamente<br />
-          3. Cuando termina (~5-8 min), aparece el botón para descargar el Excel limpio<br />
-          4. Sube ese archivo a SIVA, luego descarga el archivo de bonos de SIVA y súbelo en <strong>Subir Excel</strong>
-        </div>
-      </div>
+      <style>{`
+        @keyframes pulse-dot {
+          0%, 100% { opacity: 1; transform: scale(1); }
+          50% { opacity: 0.4; transform: scale(0.7); }
+        }
+      `}</style>
     </div>
   )
 }
